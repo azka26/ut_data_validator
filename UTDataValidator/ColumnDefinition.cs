@@ -6,21 +6,18 @@ namespace UTDataValidator
     {
         public ColumnDefinition(string columnValue, int columnIndex)
         {
+            NeedValidation = true;
+            ColumnName = columnValue;
             ColumnIndex = columnIndex;
             if (columnValue.Contains(":"))
             {
                 string[] split = columnValue.Split(':');
                 ColumnName = split[0].Trim();
                 string needCheck = split[1].Trim();
-                if (needCheck == "1")
+                if (needCheck == "0")
                 {
-                    NeedValidation = true;
+                    NeedValidation = false;
                 }
-            }
-            else
-            {
-                ColumnName = columnValue;
-                NeedValidation = false;
             }
         }
 
