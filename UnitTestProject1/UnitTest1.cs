@@ -22,7 +22,7 @@ namespace UnitTestProject1
                 {
                     DataTable result = new DataTable();
                     string sql = $"SELECT * FROM {definition.Table};";
-                    using (SqlConnection connection = new SqlConnection("Data Source=.; Initial Catalog=ADMSparepart; user id=admin; password=AMNIndonesia2022; MultipleActiveResultSets=True; Connection Timeout=30;"))
+                    using (SqlConnection connection = new SqlConnection("Data Source=.; Initial Catalog=ADM_SPAREPART_LENGKAP; Integrated Security=True; MultipleActiveResultSets=True; Connection Timeout=864000;"))
                     {
                         connection.Open();
                         using (SqlCommand command = connection.CreateCommand())
@@ -43,7 +43,7 @@ namespace UnitTestProject1
                 {
                     foreach (var item in data)
                     {
-                        using (SqlConnection connection = new SqlConnection("Data Source=.; Initial Catalog=ADMSparepart; user id=admin; password=AMNIndonesia2022; MultipleActiveResultSets=True; Connection Timeout=30;"))
+                        using (SqlConnection connection = new SqlConnection("Data Source=.; Initial Catalog=ADM_SPAREPART_LENGKAP; Integrated Security=True; MultipleActiveResultSets=True; Connection Timeout=864000;"))
                         {
                             connection.Open();
                             using (SqlCommand command = connection.CreateCommand())

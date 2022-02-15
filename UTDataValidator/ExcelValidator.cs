@@ -100,6 +100,7 @@ namespace UTDataValidator
                 if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
                 {
                     counterBlank++;
+                    row++;
                     continue;
                 }
 

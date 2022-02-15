@@ -10,7 +10,13 @@ namespace UTDataValidator
         private readonly string _expected;
         public JsonDataValidator(string expectedJsonPath)
         {
-            _expected = File.ReadAllText(expectedJsonPath);
+            using (FileStream fs = new FileStream(expectedJsonPath, FileMode.Open, FileAccess.Read))
+            {
+                using (StreamReader sw = new StreamReader(fs))
+                {
+                    _expected = sw.ReadToEnd();
+                }
+            }
         }
 
         public void ValidateData(string actual)
