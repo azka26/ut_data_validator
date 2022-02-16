@@ -77,11 +77,27 @@ namespace UTDataValidator
 
         private void ReadExcel()
         {
+            if (!File.Exists(_excelPath))
+            {
+                throw new Exception($"Excel file on path = '{_excelPath}' not found.");
+            }
+
             FileInfo fi = new FileInfo(_excelPath);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
             {
                 ExcelWorksheet initData = excelPackage.Workbook.Worksheets[_worksheetInitData];
                 ExcelWorksheet expectedData = excelPackage.Workbook.Worksheets[_worksheetExpectedData];
+
+                if (initData == null)
+                {
+                    throw new Exception($"Sheet {_worksheetInitData} not found on excel {_excelPath}.");
+                }
+
+                if (expectedData == null)
+                {
+                    throw new Exception($"Sheet {_worksheetInitData} not found on excel {_excelPath}.");
+                }
+
                 CollectInitData(initData);
                 CollectExpectedData(expectedData);
             }

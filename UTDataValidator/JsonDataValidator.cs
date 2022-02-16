@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -10,6 +11,11 @@ namespace UTDataValidator
         private readonly string _expected;
         public JsonDataValidator(string expectedJsonPath)
         {
+            if (!File.Exists(expectedJsonPath))
+            {
+                throw new Exception($"JSON file expected on path = '{expectedJsonPath}' not found.");
+            }
+
             using (FileStream fs = new FileStream(expectedJsonPath, FileMode.Open, FileAccess.Read))
             {
                 using (StreamReader sw = new StreamReader(fs))
