@@ -13,18 +13,16 @@ namespace UTDataValidator
         private readonly string _excelPath;
         private readonly string _worksheetInitData;
         private readonly string _worksheetExpectedData;
-        private readonly Func<ExcelDataDefinition, DataTable> _readTableFunction;
-        private readonly Action<IEnumerable<ExcelDataDefinition>> _processInitData;
+        private readonly IEventExcelValidator _eventExcelValidator;
         public ExcelTestDefinition InitialData { get; private set; }
         public ExcelTestDefinition ExpectedData { get; private set; }
 
-        public ExcelValidator(string excelPath, string worksheetInitData, string worksheetExpectedData, Func<ExcelDataDefinition, DataTable> readTableFunction, Action<IEnumerable<ExcelDataDefinition>> processInitData)
+        public ExcelValidator(string excelPath, string worksheetInitData, string worksheetExpectedData, IEventExcelValidator eventExcelValidator)
         {
             _excelPath = excelPath;
             _worksheetInitData = worksheetInitData;
             _worksheetExpectedData = worksheetExpectedData;
-            _readTableFunction = readTableFunction;
-            _processInitData = processInitData;
+            _eventExcelValidator = eventExcelValidator;
             ReadExcel();
         }
 
@@ -32,16 +30,16 @@ namespace UTDataValidator
         {
             foreach (ExcelDataDefinition data in ExpectedData.ExcelDataDefinitions)
             {
-                DataTable actual = _readTableFunction(data);
+                DataTable actual = _eventExcelValidator.ReadTable(data);
                 CompareDataTable(data, actual);
             }
         }
 
-        public void ExecuteAction(Action<TestAction> action) 
+        public void ExecuteAction() 
         { 
             if (ExpectedData.TestAction != null)
             {
-                action(ExpectedData.TestAction);
+                _eventExcelValidator.ExecuteAction(ExpectedData.TestAction);
             }
         }
 
@@ -132,7 +130,7 @@ namespace UTDataValidator
 
                     testDataMap.Add(testData.Table.ToLower(), testData);
                     ReadColumnDefinition(testData, sheet);
-                    testData.Data = _readTableFunction(testData);
+                    testData.Data = _eventExcelValidator.ReadTable(testData);
                 }
 
                 if (value.ToLower().StartsWith("action:"))
@@ -281,7 +279,7 @@ namespace UTDataValidator
             {
                 ReadExcelData(item, sheet);
             }
-            _processInitData(testData);
+            _eventExcelValidator.InitData(testData);
             InitialData = new ExcelTestDefinition()
             {
                 TestAction = testAction,
