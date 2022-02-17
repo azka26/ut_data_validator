@@ -5,7 +5,7 @@ VisualStudioVersion = 17.0.31919.166
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTestProject1", "UnitTestProject1\UnitTestProject1.csproj", "{3002E3CE-8E57-406B-8B20-C187FA5FCF8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UTDataValidator", "UTDataValidator\UTDataValidator.csproj", "{090E1C59-252B-4DEC-88D0-7F8B2441C736}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UTDataValidator", "UTDataValidator\UTDataValidator.csproj", "{090E1C59-252B-4DEC-88D0-7F8B2441C736}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
