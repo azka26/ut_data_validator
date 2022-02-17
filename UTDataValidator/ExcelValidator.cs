@@ -194,7 +194,7 @@ namespace UTDataValidator
                 }
 
                 ExcelRange cellValue = sheet.Cells[row, valueColumn];
-                parameters.Add(cell.GetValue<string>().ToLower(), (cellValue?.GetValue<string>()??"").ToLower());
+                parameters.Add(cell.GetValue<string>().ToLower(), (cellValue?.GetValue<string>()??""));
 
                 row++;
             }
