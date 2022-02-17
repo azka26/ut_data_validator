@@ -36,10 +36,16 @@ namespace UTDataValidator
         }
 
         public void ExecuteAction() 
-        { 
-            if (ExpectedData.TestAction != null)
+        {
+            if (ExpectedData.TestActions != null)
             {
-                _eventExcelValidator.ExecuteAction(ExpectedData.TestAction);
+                foreach (TestAction action in ExpectedData.TestActions)
+                {
+                    for (int i = 0; i < action.Loop; i++)
+                    {
+                        _eventExcelValidator.ExecuteAction(action);
+                    }
+                }
             }
         }
 
@@ -93,7 +99,7 @@ namespace UTDataValidator
 
                 if (expectedData == null)
                 {
-                    throw new Exception($"Sheet {_worksheetInitData} not found on excel {_excelPath}.");
+                    throw new Exception($"Sheet {_worksheetExpectedData} not found on excel {_excelPath}.");
                 }
 
                 CollectInitData(initData);
@@ -101,10 +107,8 @@ namespace UTDataValidator
             }
         }
 
-        private IEnumerable<ExcelDataDefinition> ReadDefinition(ExcelWorksheet sheet, out TestAction testAction)
+        private IEnumerable<ExcelDataDefinition> ReadDefinition(ExcelWorksheet sheet)
         {
-            testAction = null;
-
             Dictionary<string, ExcelDataDefinition> testDataMap = new Dictionary<string, ExcelDataDefinition>();
             int counterBlank = 0;
             int row = 1;
@@ -132,22 +136,42 @@ namespace UTDataValidator
                     ReadColumnDefinition(testData, sheet);
                     testData.Data = _eventExcelValidator.ReadTable(testData);
                 }
-
-                if (value.ToLower().StartsWith("action:"))
-                {
-                    if (testAction != null)
-                    {
-                        throw new Exception($"Duplicate action on worksheet {sheet.Name} between row {row} and {testAction.RowNumber}.");
-                    }
-
-                    testAction = new TestAction(value, row, sheet);
-                    ReadActionParameters(testAction, sheet);
-                }
                 
                 row++;
             }
 
             return testDataMap.Values.ToList();
+        }
+
+        private IEnumerable<TestAction> ReadActions(ExcelWorksheet sheet)
+        {
+            List<TestAction> testActions = new List<TestAction>();
+            int counterBlank = 0;
+            int row = 1;
+            while (counterBlank < 2)
+            {
+                ExcelRange cell = sheet.Cells[row, 1];
+                if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
+                {
+                    counterBlank++;
+                    row++;
+                    continue;
+                }
+
+                counterBlank = 0;
+                string value = cell.GetValue<string>();
+                
+                if (value.ToLower().StartsWith("action:"))
+                {
+                    TestAction testAction = new TestAction(value, row, sheet);
+                    testActions.Add(testAction);
+                    ReadActionParameters(testAction, sheet);
+                }
+
+                row++;
+            }
+
+            return testActions;
         }
 
         private void ReadActionParameters(TestAction action, ExcelWorksheet sheet)
@@ -273,31 +297,33 @@ namespace UTDataValidator
 
         private void CollectInitData(ExcelWorksheet sheet)
         {
-            TestAction testAction = null;
-            IEnumerable<ExcelDataDefinition> testData = ReadDefinition(sheet, out testAction);
+            IEnumerable<ExcelDataDefinition> testData = ReadDefinition(sheet);
+
             foreach (ExcelDataDefinition item in testData)
             {
                 ReadExcelData(item, sheet);
             }
+
             _eventExcelValidator.InitData(testData);
             InitialData = new ExcelTestDefinition()
             {
-                TestAction = testAction,
                 ExcelDataDefinitions = testData
             };
         }
 
         private void CollectExpectedData(ExcelWorksheet sheet)
         {
-            TestAction testAction = null;
-            IEnumerable<ExcelDataDefinition> testData = ReadDefinition(sheet, out testAction);
+            IEnumerable<ExcelDataDefinition> testData = ReadDefinition(sheet);
+            IEnumerable<TestAction> testActions = ReadActions(sheet);
+
             foreach (ExcelDataDefinition item in testData)
             {
                 ReadExcelData(item, sheet);
             }
+
             ExpectedData = new ExcelTestDefinition()
             {
-                TestAction = testAction,
+                TestActions = testActions,
                 ExcelDataDefinitions = testData
             };
         }

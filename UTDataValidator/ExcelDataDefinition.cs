@@ -6,7 +6,7 @@ namespace UTDataValidator
 {
     public class ExcelTestDefinition
     {
-        public TestAction TestAction { get; set; }
+        public IEnumerable<TestAction> TestActions { get; set; }
         public IEnumerable<ExcelDataDefinition> ExcelDataDefinitions { get; set; }
     }
 

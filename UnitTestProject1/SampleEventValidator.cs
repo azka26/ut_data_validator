@@ -21,20 +21,17 @@ namespace UnitTestProject1
 
         public void ExecuteAction(TestAction action)
         {
-            for (int i = 0; i < action.Loop; i++)
+            if (action.ActionName == "picking_scan_trolley")
             {
-                if (action.ActionName == "picking_scan_trolley")
-                {
-                    Picking_ScanTrolley(action.Parameters);
-                }
-                else if (action.ActionName == "picking_scan_part")
-                {
-                    Picking_ScanPart(action.Parameters);
-                }
-                else
-                {
-                    throw new Exception("Action not found.");
-                }
+                Picking_ScanTrolley(action.Parameters);
+            }
+            else if (action.ActionName == "picking_scan_part")
+            {
+                Picking_ScanPart(action.Parameters);
+            }
+            else
+            {
+                throw new Exception("Action not found.");
             }
         }
 
