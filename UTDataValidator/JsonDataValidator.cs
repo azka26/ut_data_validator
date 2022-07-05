@@ -9,20 +9,25 @@ namespace UTDataValidator
     public class JsonDataValidator
     {
         private readonly string _expected;
-        public JsonDataValidator(string expectedJsonPath)
+        public JsonDataValidator(FileInfo fileInfo)
         {
-            if (!File.Exists(expectedJsonPath))
+            if (!File.Exists(fileInfo.FullName))
             {
-                throw new Exception($"JSON file expected on path = '{expectedJsonPath}' not found.");
+                throw new Exception($"JSON file expected on path = '{fileInfo.FullName}' not found.");
             }
 
-            using (FileStream fs = new FileStream(expectedJsonPath, FileMode.Open, FileAccess.Read))
+            using (FileStream fs = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read))
             {
                 using (StreamReader sw = new StreamReader(fs))
                 {
                     _expected = sw.ReadToEnd();
                 }
             }
+        }
+
+        public JsonDataValidator(string expectedJsonString)
+        {
+            _expected = expectedJsonString;
         }
 
         public void ValidateData(string actual)
