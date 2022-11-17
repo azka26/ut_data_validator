@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿// using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -9,8 +9,10 @@ namespace UTDataValidator
     public class JsonDataValidator
     {
         private readonly string _expected;
-        public JsonDataValidator(FileInfo fileInfo)
+        private readonly IAssertion _assertion;
+        public JsonDataValidator(IAssertion assertion, FileInfo fileInfo)
         {
+            _assertion = assertion;
             if (!File.Exists(fileInfo.FullName))
             {
                 throw new Exception($"JSON file expected on path = '{fileInfo.FullName}' not found.");
@@ -25,9 +27,10 @@ namespace UTDataValidator
             }
         }
 
-        public JsonDataValidator(string expectedJsonString)
+        public JsonDataValidator(IAssertion assertion, string expectedJsonString)
         {
             _expected = expectedJsonString;
+            _assertion = assertion;
         }
 
         public void ValidateData(string actual)
@@ -47,12 +50,12 @@ namespace UTDataValidator
             foreach (KeyValuePair<string, object> keyValue in expected)
             {
                 string nodeInfo = string.IsNullOrEmpty(node) ? keyValue.Key : $"{node}.{keyValue.Key}";
-                Assert.IsTrue(actual.ContainsKey(keyValue.Key), message: $"Node '{nodeInfo}' has different node between expected and actual, actual doesn't have '{nodeInfo}'.");
-                Assert.AreEqual(IsData(keyValue.Value), IsData(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(IsJsonDictionary(keyValue.Value), IsJsonDictionary(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(IsJsonList(keyValue.Value), IsJsonList(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(keyValue.Value == null, actual[keyValue.Key] == null, message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(keyValue.Value?.ToString() == "", actual[keyValue.Key]?.ToString() == "", message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.IsTrue(actual.ContainsKey(keyValue.Key), message: $"Node '{nodeInfo}' has different node between expected and actual, actual doesn't have '{nodeInfo}'.");
+                _assertion.AreEqual(IsData(keyValue.Value), IsData(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(IsJsonDictionary(keyValue.Value), IsJsonDictionary(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(IsJsonList(keyValue.Value), IsJsonList(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(keyValue.Value == null, actual[keyValue.Key] == null, message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(keyValue.Value?.ToString() == "", actual[keyValue.Key]?.ToString() == "", message: $"Node '{nodeInfo}' has different value between expected and actual.");
 
                 if (keyValue.Value == null || keyValue.Value.ToString() == "")
                 {
@@ -63,7 +66,7 @@ namespace UTDataValidator
                 {
                     string expectedString = JsonObjectToString(keyValue.Value);
                     string actualString = JsonObjectToString(actual[keyValue.Key]);
-                    Assert.AreEqual(expectedString, actualString, message: $"Node '{nodeInfo}' has different value.");
+                    _assertion.AreEqual(expectedString, actualString, message: $"Node '{nodeInfo}' has different value.");
                 }
 
                 if (IsJsonDictionary(keyValue.Value))
@@ -86,7 +89,7 @@ namespace UTDataValidator
 
         private void ValidateJsonList(List<object> expected, List<object> actual, string node)
         {
-            Assert.AreEqual(expected.Count, actual.Count, $"Node {node} has different list count.");
+            _assertion.AreEqual(expected.Count, actual.Count, $"Node {node} has different list count.");
             for (int i = 0; i < expected.Count; i++)
             {
                 string nodeInfo = $"{node}[{i}]";
@@ -94,11 +97,11 @@ namespace UTDataValidator
                 object expectedObj = expected[i];
                 object actualObj = actual[i];
 
-                Assert.AreEqual(IsData(expectedObj), IsData(actualObj), message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(IsJsonDictionary(expectedObj), IsJsonDictionary(actualObj), message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(IsJsonList(expectedObj), IsJsonList(actualObj), message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(expectedObj == null, actualObj == null, message: $"Node '{nodeInfo}' has different value between expected and actual.");
-                Assert.AreEqual(expectedObj?.ToString() == "", actualObj?.ToString() == "", message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(IsData(expectedObj), IsData(actualObj), message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(IsJsonDictionary(expectedObj), IsJsonDictionary(actualObj), message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(IsJsonList(expectedObj), IsJsonList(actualObj), message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(expectedObj == null, actualObj == null, message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                _assertion.AreEqual(expectedObj?.ToString() == "", actualObj?.ToString() == "", message: $"Node '{nodeInfo}' has different value between expected and actual.");
 
                 if (expectedObj == null || expectedObj.ToString() == "")
                 {
@@ -109,7 +112,7 @@ namespace UTDataValidator
                 {
                     string expectedString = JsonObjectToString(expectedObj);
                     string actualString = JsonObjectToString(actualObj);
-                    Assert.AreEqual(expectedString, actualString, message: $"Node '{nodeInfo}' has different value between expected and actual.");
+                    _assertion.AreEqual(expectedString, actualString, message: $"Node '{nodeInfo}' has different value between expected and actual.");
                 }
 
                 if (IsJsonDictionary(expectedObj))

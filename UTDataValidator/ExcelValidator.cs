@@ -1,4 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿// using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
@@ -17,12 +17,15 @@ namespace UTDataValidator
         public ExcelTestDefinition InitialData { get; private set; }
         public ExcelTestDefinition ExpectedData { get; private set; }
 
-        public ExcelValidator(string excelPath, string worksheetInitData, string worksheetExpectedData, IEventExcelValidator eventExcelValidator)
+        private readonly IAssertion _assert;
+        
+        public ExcelValidator(IAssertion assertion, string excelPath, string worksheetInitData, string worksheetExpectedData, IEventExcelValidator eventExcelValidator)
         {
             _excelPath = excelPath;
             _worksheetInitData = worksheetInitData;
             _worksheetExpectedData = worksheetExpectedData;
             _eventExcelValidator = eventExcelValidator;
+            _assert = assertion;
             ReadExcel();
         }
 
@@ -51,17 +54,17 @@ namespace UTDataValidator
 
         private void CompareDataTable(ExcelDataDefinition expected, DataTable actual)
         {
-            Assert.AreEqual(expected.Data.Rows.Count, actual.Rows.Count, $"Different row count on table {expected.Table}.");
-            for (int i = 0; i < expected.Data.Rows.Count; i++)
+            _assert.AreEqual(expected.Data.Rows.Count, actual.Rows.Count, $"Different row count on table {expected.Table}.");
+            for (var i = 0; i < expected.Data.Rows.Count; i++)
             {
-                DataRow rowExpected = expected.Data.Rows[i];
-                DataRow rowActual = actual.Rows[i];
+                var rowExpected = expected.Data.Rows[i];
+                var rowActual = actual.Rows[i];
 
-                foreach (ColumnDefinition item in expected.ColumnMapping.Values)
+                foreach (var item in expected.ColumnMapping.Values)
                 {
                     if (!item.NeedValidation) continue;
 
-                    Assert.AreEqual(
+                    _assert.AreEqual(
                         rowExpected[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowExpected[item.ColumnName].ToString()),
                         rowActual[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowActual[item.ColumnName].ToString()),
                         $"Different value on table {expected.Table} column {item.ColumnName} row {i + 1}."
@@ -69,7 +72,7 @@ namespace UTDataValidator
                     
                     if (rowExpected[item.ColumnName] != DBNull.Value && rowActual[item.ColumnName] != DBNull.Value)
                     {
-                        Assert.AreEqual(
+                        _assert.AreEqual(
                             rowExpected[item.ColumnName], 
                             rowActual[item.ColumnName], 
                             $"Different value on table {expected.Table} column {item.ColumnName} row {i + 1}."

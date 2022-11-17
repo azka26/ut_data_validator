@@ -12,7 +12,8 @@ namespace UnitTestProject1
         {
             IEventExcelValidator eventExcelValidator = new SampleEventValidator();
             ExcelValidator excelValidator = new ExcelValidator(
-                excelPath: excelPath
+                new Assertion()
+                , excelPath: excelPath
                 , worksheetInitData: "Sheet1"
                 , worksheetExpectedData: "Sheet2",
                 eventExcelValidator
