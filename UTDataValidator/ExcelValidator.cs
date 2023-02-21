@@ -10,6 +10,8 @@ namespace UTDataValidator
 {
     public class ExcelValidator 
     {
+        public static IAssertion DefaultAssertion { get; set; }
+        
         private readonly string _excelPath;
         private readonly string _worksheetInitData;
         private readonly string _worksheetExpectedData;
@@ -25,6 +27,16 @@ namespace UTDataValidator
             _worksheetExpectedData = worksheetExpectedData;
             _eventExcelValidator = eventExcelValidator;
             _assert = assertion;
+            ReadExcel();
+        }
+        
+        public ExcelValidator(string excelPath, string worksheetInitData, string worksheetExpectedData, IEventExcelValidator eventExcelValidator)
+        {
+            _excelPath = excelPath;
+            _worksheetInitData = worksheetInitData;
+            _worksheetExpectedData = worksheetExpectedData;
+            _eventExcelValidator = eventExcelValidator;
+            _assert = DefaultAssertion;
             ReadExcel();
         }
 
