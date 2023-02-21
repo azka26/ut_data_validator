@@ -59,7 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="SampleEventValidator.cs" />
-    <Compile Include="UnitTest1.cs" />
+    <Compile Include="ExcelValidatorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

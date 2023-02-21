@@ -20,10 +20,9 @@ namespace UnitTestProject1
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "excel", "sample-tipe-data.xlsx");
             ExcelValidator excelValidator = new ExcelValidator(new Assertion(), path, "init", "expected", this);
 
-            ExecuteNonQuery($@" SET IDENTITY_INSERT dbo.SampleTable ON;
-                    INSERT INTO SampleTable (Id, Name, CreatedDate, CreatedTime, CreatedDateTime, ValueInt, ValueDouble) 
-                    VALUES ('2', 'Andika', '2022-01-03', '00:02:00', '2022-01-03 00:02:00.000','22','20.3');
-                    SET IDENTITY_INSERT dbo.SampleTable OFF;
+            ExecuteNonQuery($@"
+                    INSERT INTO SampleTable (Name, CreatedDate, CreatedTime, CreatedDateTime, ValueInt, ValueDouble) 
+                    VALUES ('Andika', '2022-01-03', '00:02:00', '2022-01-03 00:02:00.000','22','20.3');
                 ");
             
             excelValidator.Validate();
@@ -106,6 +105,15 @@ namespace UnitTestProject1
                         ";
                     ExecuteNonQuery(sql, parameters);
                 }
+
+                try
+                {
+                    ExecuteNonQuery($@"
+                    declare @lastId int
+                    select @lastId = max(id) from {definition.Table} st
+                    dbcc checkident('{definition.Table}', reseed, @lastId)
+                ");
+                } catch {}
             }
         }
 
