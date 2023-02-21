@@ -8,6 +8,8 @@ namespace UTDataValidator
 {
     public class JsonDataValidator
     {
+        public static IAssertion DefaultAssertion { get; set; }
+        
         private readonly string _expected;
         private readonly IAssertion _assertion;
         public JsonDataValidator(IAssertion assertion, FileInfo fileInfo)
@@ -31,6 +33,29 @@ namespace UTDataValidator
         {
             _expected = expectedJsonString;
             _assertion = assertion;
+        }
+        
+        public JsonDataValidator(FileInfo fileInfo)
+        {
+            _assertion = DefaultAssertion;
+            if (!File.Exists(fileInfo.FullName))
+            {
+                throw new Exception($"JSON file expected on path = '{fileInfo.FullName}' not found.");
+            }
+
+            using (FileStream fs = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read))
+            {
+                using (StreamReader sw = new StreamReader(fs))
+                {
+                    _expected = sw.ReadToEnd();
+                }
+            }
+        }
+
+        public JsonDataValidator(string expectedJsonString)
+        {
+            _expected = expectedJsonString;
+            _assertion = DefaultAssertion;
         }
 
         public void ValidateData(string actual)
