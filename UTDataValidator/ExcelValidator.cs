@@ -16,7 +16,6 @@ namespace UTDataValidator
         private readonly IEventExcelValidator _eventExcelValidator;
         public ExcelTestDefinition InitialData { get; private set; }
         public ExcelTestDefinition ExpectedData { get; private set; }
-
         private readonly IAssertion _assert;
         
         public ExcelValidator(IAssertion assertion, string excelPath, string worksheetInitData, string worksheetExpectedData, IEventExcelValidator eventExcelValidator)
@@ -278,24 +277,83 @@ namespace UTDataValidator
 
                     try
                     {
-                        if (dataType == typeof(DateTime))
+                        Object value = null;
+                        if (!ConvertDataType(dataType, cell, out value))
                         {
-                            DateTime dateValue = cell.GetValue<DateTime>();
-                            dataRow[columnDefinition.ColumnName] = dateValue;
+                            throw new Exception($"Failed set value to DataTable on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}.");
                         }
-                        else 
-                        {
-                            dataRow[columnDefinition.ColumnName] = Convert.ChangeType(cell.Value, dataType);
-                        }
+
+                        column.ReadOnly = false;
+                        dataRow[columnDefinition.ColumnName] = Convert.ChangeType(value, dataType);
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        throw new Exception($"Failed set value to DataTable on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}.");
+                        throw new Exception($"Failed set value to DataTable on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}.", e);
                     }
                 }
 
                 row++;
             }
+        }
+
+        private bool ConvertDataType(Type dataType, ExcelRange cell, out object value)
+        {
+            value = null;
+            if (_eventExcelValidator.ConvertType(dataType, cell, out value))
+            {
+                return true;
+            }
+            
+            if (dataType == typeof(DateTime))
+            {
+                value = cell.GetValue<DateTime>();
+                return true;
+            }
+            
+            if (dataType == typeof(TimeSpan))
+            {
+                var timeSpan = cell.GetValue<TimeSpan>();
+                value = new TimeSpan(timeSpan.Hours, timeSpan.Minutes, timeSpan.Seconds);
+                return true;
+            }
+            
+            if (dataType == typeof(int))
+            {
+                value = cell.GetValue<int>();
+                return true;
+            }
+            
+            if (dataType == typeof(Int32))
+            {
+                value = cell.GetValue<Int32>();
+                return true;
+            }
+            
+            if (dataType == typeof(Int64))
+            {
+                value = cell.GetValue<Int64>();
+                return true;
+            }
+            
+            if (dataType == typeof(long))
+            {
+                value = cell.GetValue<long>();
+                return true;
+            }
+            
+            if (dataType == typeof(double))
+            {
+                value = cell.GetValue<double>();
+                return true;
+            }
+            
+            if (dataType == typeof(string))
+            {
+                value = cell.GetValue<string>();
+                return true;
+            }
+
+            return false;
         }
 
         private void CollectInitData(ExcelWorksheet sheet)

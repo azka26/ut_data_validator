@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using OfficeOpenXml;
 
 namespace UTDataValidator
 {
@@ -8,5 +10,6 @@ namespace UTDataValidator
         DataTable ReadTable(ExcelDataDefinition excelDataDefinition);
         void InitData(IEnumerable<ExcelDataDefinition> excelDataDefinition);
         void ExecuteAction(TestAction testAction);
+        bool ConvertType(Type type, ExcelRange excelRange, out object outputValue);
     }
 }

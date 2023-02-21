@@ -4,7 +4,8 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
+using OfficeOpenXml;
 
 namespace UnitTestProject1
 {
@@ -47,6 +48,12 @@ namespace UnitTestProject1
             {
                 throw new Exception("Action not found.");
             }
+        }
+
+        public bool ConvertType(Type type, ExcelRange excelRange, out object outputValue)
+        {
+            outputValue = null;
+            return false;
         }
 
         public void InitData(IEnumerable<ExcelDataDefinition> excelDataDefinition)
