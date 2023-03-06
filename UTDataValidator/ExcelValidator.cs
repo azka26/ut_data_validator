@@ -66,6 +66,13 @@ namespace UTDataValidator
         private void CompareDataTable(ExcelDataDefinition expected, DataTable actual)
         {
             _assert.AreEqual(expected.Data.Rows.Count, actual.Rows.Count, $"Different row count on table {expected.Table}.");
+            var orderColumn = string.Join(", ", expected.ColumnMapping.Values.Select(f => f.ColumnName).ToList());
+            expected.Data.DefaultView.Sort = $"{orderColumn} ASC";
+            actual.DefaultView.Sort = $"{orderColumn} ASC";
+
+            expected.Data = expected.Data.DefaultView.ToTable();
+            actual = actual.DefaultView.ToTable();
+            
             for (var i = 0; i < expected.Data.Rows.Count; i++)
             {
                 var rowExpected = expected.Data.Rows[i];
@@ -74,11 +81,12 @@ namespace UTDataValidator
                 foreach (var item in expected.ColumnMapping.Values)
                 {
                     if (!item.NeedValidation) continue;
+                    var excelRowNumber = Convert.ToInt32(rowExpected[AZ_ROW_VALIDATOR]);
 
                     _assert.AreEqual(
                         rowExpected[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowExpected[item.ColumnName].ToString()),
                         rowActual[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowActual[item.ColumnName].ToString()),
-                        $"Different value on table {expected.Table} column {item.ColumnName} row {i + 1}."
+                        $"Different value on table {expected.Table} column {item.ColumnName} row {excelRowNumber}."
                     );
                     
                     if (rowExpected[item.ColumnName] != DBNull.Value && rowActual[item.ColumnName] != DBNull.Value)
@@ -86,7 +94,7 @@ namespace UTDataValidator
                         _assert.AreEqual(
                             rowExpected[item.ColumnName], 
                             rowActual[item.ColumnName], 
-                            $"Different value on table {expected.Table} column {item.ColumnName} row {i + 1}."
+                            $"Different value on table {expected.Table} column {item.ColumnName} row {excelRowNumber}."
                         );
                     }
                 }
@@ -238,7 +246,8 @@ namespace UTDataValidator
             }
         }
 
-        private void ReadExcelData(ExcelDataDefinition testData, ExcelWorksheet sheet)
+        private static string AZ_ROW_VALIDATOR = nameof(AZ_ROW_VALIDATOR);
+        private void ReadExcelData(ExcelDataDefinition testData, ExcelWorksheet sheet, bool addRowInfo = false)
         {
             testData.Data.Clear();
             foreach (DataColumn column in testData.Data.Columns)
@@ -247,6 +256,11 @@ namespace UTDataValidator
             }
 
             int row = testData.RowNumber + 2;
+            if (addRowInfo && !testData.Data.Columns.Contains(AZ_ROW_VALIDATOR))
+            {
+                testData.Data.Columns.Add(AZ_ROW_VALIDATOR, typeof(int));
+            }
+            
             while(true)
             {
                 ExcelRange cell = sheet.Cells[row, 1];
@@ -271,6 +285,11 @@ namespace UTDataValidator
 
                 DataRow dataRow = testData.Data.NewRow();
                 testData.Data.Rows.Add(dataRow);
+                if (addRowInfo)
+                {
+                    dataRow[AZ_ROW_VALIDATOR] = row;
+                }
+
                 foreach (ColumnDefinition columnDefinition in testData.ColumnMapping.Values)
                 {
                     if (!testData.Data.Columns.Contains(columnDefinition.ColumnName))
@@ -391,7 +410,7 @@ namespace UTDataValidator
 
             foreach (ExcelDataDefinition item in testData)
             {
-                ReadExcelData(item, sheet);
+                ReadExcelData(item, sheet, true);
             }
 
             ExpectedData = new ExcelTestDefinition()

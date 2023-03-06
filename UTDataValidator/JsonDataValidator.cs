@@ -13,7 +13,7 @@ namespace UTDataValidator
         
         private readonly string _expected;
         private readonly IAssertion _assertion;
-        private List<string> _skipProperties { get; set; }
+        private readonly List<string> _skipProperties;
         
         public JsonDataValidator(IAssertion assertion, FileInfo fileInfo)
         {
@@ -125,8 +125,10 @@ namespace UTDataValidator
 
         private bool IsSkipValidate(string node)
         {
+            if (_skipProperties == null || _skipProperties.Count == 0) return false;
+            
             if (_skipProperties.Contains(node)) return true;
-
+            
             var regexList = new Regex(@"(?:\[[0-9]*\])");
             var nodeCleanString = regexList.Replace(node, "[]");
             foreach (var skipProperty in _skipProperties)
@@ -288,7 +290,7 @@ namespace UTDataValidator
             string data = JsonConvert.SerializeObject(value);
             return JsonConvert.DeserializeObject<List<object>>(data);
         }
-
+        
         private Dictionary<string, object> JsonObjectToDictionary(object value)
         {
             string data = JsonConvert.SerializeObject(value);

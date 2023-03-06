@@ -13,12 +13,26 @@ namespace UnitTestProject1
 {
     public class ExcelValidatorTest : IEventExcelValidator
     {
-        private string ConnectionString = "Data Source=localhost,1433;Initial Catalog=UnitTest;User ID=sa;Password=Strong@Password;";
+        private string ConnectionString = "Data Source=localhost,1433;Initial Catalog=UnitTest;User ID=sa;Password=yourStrong(!)Password;";
         [Test()]
-        public void ExcelValidator_Test()
+        public void ExcelValidator_Sorted_Test()
         {
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "excel", "sample-tipe-data.xlsx");
             ExcelValidator excelValidator = new ExcelValidator(new Assertion(), path, "init", "expected", this);
+
+            ExecuteNonQuery($@"
+                    INSERT INTO SampleTable (Name, CreatedDate, CreatedTime, CreatedDateTime, ValueInt, ValueDouble) 
+                    VALUES ('Andika', '2022-01-03', '00:02:00', '2022-01-03 00:02:00.000','22','20.3');
+                ");
+            
+            excelValidator.Validate();
+        }
+        
+        [Test()]
+        public void ExcelValidator_UnSorted_Test()
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "excel", "sample-tipe-data.xlsx");
+            ExcelValidator excelValidator = new ExcelValidator(new Assertion(), path, "init", "unsorted", this);
 
             ExecuteNonQuery($@"
                     INSERT INTO SampleTable (Name, CreatedDate, CreatedTime, CreatedDateTime, ValueInt, ValueDouble) 
