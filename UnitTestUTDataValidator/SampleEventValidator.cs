@@ -4,26 +4,18 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
-using NUnit.Framework;
 using OfficeOpenXml;
 
 namespace UnitTestProject1
 {
-    public class Assertion : IAssertion
-    {
-        public void AreEqual<T>(T expected, T actual, string message)
-        {
-            Assert.AreEqual(expected, actual, message);
-        }
-
-        public void IsTrue(bool condition, string message)
-        {
-            Assert.IsTrue(condition, message);
-        }
-    }
-    
     public class SampleEventValidator : IEventExcelValidator
     {
+        public SampleEventValidator()
+        {
+            ExcelValidator.DefaultAssertion = new Assertion();
+            JsonDataValidator.DefaultAssertion = new Assertion();
+        }
+        
         private void Picking_ScanTrolley(Dictionary<string, string> parameters)
         {
 
