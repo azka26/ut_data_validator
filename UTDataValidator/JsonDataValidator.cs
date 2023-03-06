@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace UTDataValidator
 {
@@ -12,6 +13,8 @@ namespace UTDataValidator
         
         private readonly string _expected;
         private readonly IAssertion _assertion;
+        private List<string> _skipProperties { get; set; }
+        
         public JsonDataValidator(IAssertion assertion, FileInfo fileInfo)
         {
             _assertion = assertion;
@@ -51,11 +54,61 @@ namespace UTDataValidator
                 }
             }
         }
+        
+        public JsonDataValidator(FileInfo fileInfo, List<string> skipProperties)
+        {
+            _skipProperties = skipProperties;
+            _assertion = DefaultAssertion;
+            if (!File.Exists(fileInfo.FullName))
+            {
+                throw new Exception($"JSON file expected on path = '{fileInfo.FullName}' not found.");
+            }
+
+            using (FileStream fs = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read))
+            {
+                using (StreamReader sw = new StreamReader(fs))
+                {
+                    _expected = sw.ReadToEnd();
+                }
+            }
+        }
+        
+        public JsonDataValidator(IAssertion assertion, FileInfo fileInfo, List<string> skipProperties)
+        {
+            _skipProperties = skipProperties;
+            _assertion = assertion;
+            if (!File.Exists(fileInfo.FullName))
+            {
+                throw new Exception($"JSON file expected on path = '{fileInfo.FullName}' not found.");
+            }
+
+            using (FileStream fs = new FileStream(fileInfo.FullName, FileMode.Open, FileAccess.Read))
+            {
+                using (StreamReader sw = new StreamReader(fs))
+                {
+                    _expected = sw.ReadToEnd();
+                }
+            }
+        }
 
         public JsonDataValidator(string expectedJsonString)
         {
             _expected = expectedJsonString;
             _assertion = DefaultAssertion;
+        }
+        
+        public JsonDataValidator(string expectedJsonString, List<string> skipProperties)
+        {
+            _expected = expectedJsonString;
+            _assertion = DefaultAssertion;
+            _skipProperties = skipProperties;
+        }
+
+        public JsonDataValidator(IAssertion assertion, string expectedJsonString, List<string> skipProperties)
+        {
+            _assertion = assertion;
+            _expected = expectedJsonString;
+            _skipProperties = skipProperties;
         }
 
         public void ValidateData(string actual)
@@ -70,11 +123,34 @@ namespace UTDataValidator
             ValidateJsonDictionary(expectedJSON, actualJSON, "");
         }
 
+        private bool IsSkipValidate(string node)
+        {
+            if (_skipProperties.Contains(node)) return true;
+
+            var regexList = new Regex(@"(?:\[[0-9]*\])");
+            var nodeCleanString = regexList.Replace(node, "[]");
+            foreach (var skipProperty in _skipProperties)
+            {
+                var cleanString = regexList.Replace(skipProperty, "[]");
+                if (nodeCleanString == cleanString)
+                {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
         private void ValidateJsonDictionary(Dictionary<string, object> expected, Dictionary<string, object> actual, string node)
         {
             foreach (KeyValuePair<string, object> keyValue in expected)
             {
                 string nodeInfo = string.IsNullOrEmpty(node) ? keyValue.Key : $"{node}.{keyValue.Key}";
+                if (IsSkipValidate(nodeInfo))
+                {
+                    continue;
+                }
+                
                 _assertion.IsTrue(actual.ContainsKey(keyValue.Key), message: $"Node '{nodeInfo}' has different node between expected and actual, actual doesn't have '{nodeInfo}'.");
                 _assertion.AreEqual(IsData(keyValue.Value), IsData(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");
                 _assertion.AreEqual(IsJsonDictionary(keyValue.Value), IsJsonDictionary(actual[keyValue.Key]), message: $"Node '{nodeInfo}' has different value between expected and actual.");

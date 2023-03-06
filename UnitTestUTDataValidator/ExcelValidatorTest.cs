@@ -36,6 +36,57 @@ namespace UnitTestProject1
             jsonDataValidator.ValidateData(JsonConvert.SerializeObject(new { Id = "1", Name = "Rizal" }));
         }
 
+        [Test]
+        public void JsonValidator_WithSkip_Test()
+        {
+            JsonDataValidator.DefaultAssertion = new Assertion();
+            var actual = new
+            {
+                Id = "1",
+                Name = "Rizal",
+                Address = "Bogor",
+                BornDate = new DateTime(1992, 6, 26, 17, 30, 0),
+                Children = new List<object>()
+                {
+                    new
+                    {
+                        Id = 1,
+                        Name = "Nafisah",
+                        BornDate = new DateTime(2020, 8, 21, 9, 0, 0)
+                    }
+                }
+            };
+            var expected = new
+            {
+                Id = "1",
+                Name = "Rizal",
+                Address = "Bogor",
+                BornDate = new DateTime(1992, 6, 26, 17, 0, 0),
+                Children = new List<object>()
+                {
+                    new
+                    {
+                        Id = 1,
+                        Name = "Nafisah",
+                        BornDate = new DateTime(2020, 8, 21, 8, 0, 0)
+                    }
+                }
+            };
+
+            var expectedString = JsonConvert.SerializeObject(expected);
+            var actualString = JsonConvert.SerializeObject(actual);
+            
+            JsonDataValidator jsonDataValidator = new JsonDataValidator(
+                expectedString, 
+                new List<string>()
+                {
+                    "BornDate",
+                    "Children[].BornDate"
+                }
+            );
+            jsonDataValidator.ValidateData(actualString);
+        }
+
         private int ExecuteNonQuery(string sql, List<SqlParameter> parameters = null)
         {
             using (var sqlConnection = new SqlConnection(ConnectionString))
