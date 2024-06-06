@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace UTDataValidator
 {
@@ -146,7 +147,7 @@ namespace UTDataValidator
 
                 counterBlank = 0;
                 string value = cell.GetValue<string>();
-                if (value.ToLower().StartsWith("table:"))
+                if (value.IsTableInfo())
                 {
                     ExcelDataDefinition testData = new ExcelDataDefinition(value, row, sheet);
                     if (testDataMap.ContainsKey(testData.Table.ToLower()))
@@ -264,7 +265,7 @@ namespace UTDataValidator
             while(true)
             {
                 ExcelRange cell = sheet.Cells[row, 1];
-                if (cell != null && !string.IsNullOrEmpty(cell.GetValue<string>()) && cell.GetValue<string>().ToLower().StartsWith("table:"))
+                if (cell != null && !string.IsNullOrEmpty(cell.GetValue<string>()) && cell.GetValue<string>().IsTableInfo())
                 {
                     break;
                 }

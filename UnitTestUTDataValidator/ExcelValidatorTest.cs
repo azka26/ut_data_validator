@@ -13,7 +13,7 @@ namespace UnitTestProject1
 {
     public class ExcelValidatorTest : IEventExcelValidator
     {
-        private string ConnectionString = "Data Source=localhost,1433;Initial Catalog=UnitTest;User ID=sa;Password=yourStrong(!)Password;";
+        private string ConnectionString = "Data Source=192.168.1.102\\M2017;Initial Catalog=UT_DataValidator;User ID=admin;Password=satusatuakusayangibu;";
         [Test()]
         public void ExcelValidator_Sorted_Test()
         {

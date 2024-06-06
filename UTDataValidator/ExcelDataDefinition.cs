@@ -14,7 +14,7 @@ namespace UTDataValidator
                 configs[i] = configs[i].Trim();
             }
 
-            Table = configs[0].Split(':')[1].Trim();
+            Table = configs[0].GetTableName(); // configs[0].Split(':')[1].Trim();
             WorksheetName = sheet.Name;
             CellValue = cellValue;
             RowNumber = rowNumber;

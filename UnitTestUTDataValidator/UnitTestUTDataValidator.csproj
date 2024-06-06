@@ -59,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assertion.cs" />
+    <Compile Include="Extension_Test.cs" />
     <Compile Include="SampleEventValidator.cs" />
     <Compile Include="ExcelValidatorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
