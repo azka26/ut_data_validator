@@ -135,7 +135,7 @@ namespace UTDataValidator
             Dictionary<string, ExcelDataDefinition> testDataMap = new Dictionary<string, ExcelDataDefinition>();
             int counterBlank = 0;
             int row = 1;
-            while (counterBlank < 2)
+            while (counterBlank < 10)
             {
                 ExcelRange cell = sheet.Cells[row, 1];
                 if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
