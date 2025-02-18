@@ -82,21 +82,33 @@ namespace UTDataValidator
                 foreach (var item in expected.ColumnMapping.Values)
                 {
                     if (!item.NeedValidation) continue;
+
+
                     var excelRowNumber = Convert.ToInt32(rowExpected[AZ_ROW_VALIDATOR]);
 
-                    _assert.AreEqual(
-                        rowExpected[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowExpected[item.ColumnName].ToString()),
-                        rowActual[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowActual[item.ColumnName].ToString()),
-                        $"Different value on table {expected.Table} column {item.ColumnName} row {excelRowNumber}."
-                    );
-                    
-                    if (rowExpected[item.ColumnName] != DBNull.Value && rowActual[item.ColumnName] != DBNull.Value)
+                    if (item.CustomValidations?.Count > 0)
+                    {
+                        foreach (var customValidation in item.CustomValidations)
+                        {
+                            _assert.CustomValidate(customValidation, rowExpected, rowActual, expected.Table, item.ColumnName, excelRowNumber);
+                        }
+                    }
+                    else
                     {
                         _assert.AreEqual(
-                            rowExpected[item.ColumnName], 
-                            rowActual[item.ColumnName], 
+                            rowExpected[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowExpected[item.ColumnName].ToString()),
+                            rowActual[item.ColumnName] == DBNull.Value || string.IsNullOrEmpty(rowActual[item.ColumnName].ToString()),
                             $"Different value on table {expected.Table} column {item.ColumnName} row {excelRowNumber}."
                         );
+
+                        if (rowExpected[item.ColumnName] != DBNull.Value && rowActual[item.ColumnName] != DBNull.Value)
+                        {
+                            _assert.AreEqual(
+                                rowExpected[item.ColumnName],
+                                rowActual[item.ColumnName],
+                                $"Different value on table {expected.Table} column {item.ColumnName} row {excelRowNumber}."
+                            );
+                        }
                     }
                 }
             }
