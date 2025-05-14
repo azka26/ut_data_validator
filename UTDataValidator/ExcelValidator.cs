@@ -17,6 +17,7 @@ namespace UTDataValidator
         private readonly string _worksheetInitData;
         private readonly string _worksheetExpectedData;
         private readonly IEventExcelValidator _eventExcelValidator;
+        public readonly UTValidationActivity _validationActivity;
         public ExcelTestDefinition InitialData { get; private set; }
         public ExcelTestDefinition ExpectedData { get; private set; }
         private readonly IAssertion _assert;
@@ -49,21 +50,7 @@ namespace UTDataValidator
                 CompareDataTable(data, actual);
             }
         }
-
-        public void ExecuteAction() 
-        {
-            if (ExpectedData.TestActions != null)
-            {
-                foreach (TestAction action in ExpectedData.TestActions)
-                {
-                    for (int i = 0; i < action.Loop; i++)
-                    {
-                        _eventExcelValidator.ExecuteAction(action);
-                    }
-                }
-            }
-        }
-
+        
         private void CompareDataTable(ExcelDataDefinition expected, DataTable actual)
         {
             _assert.AreEqual(expected.Data.Rows.Count, actual.Rows.Count, $"Different row count on table {expected.Table}.");
@@ -137,92 +124,9 @@ namespace UTDataValidator
                     throw new Exception($"Sheet {_worksheetExpectedData} not found on excel {_excelPath}.");
                 }
 
-                CollectActivity(initData);
                 CollectInitData(initData);
                 CollectExpectedData(expectedData);
             }
-        }
-
-        public UTValidationActivity _validationActivity = new UTValidationActivity();
-        private void CollectActivity(ExcelWorksheet worksheet) 
-        {
-            var mode = worksheet.Cells[1, 1].GetValue<string>();
-            if (mode != "mode") {
-                return;
-            }
-
-            _validationActivity.ExecutionType = worksheet.Cells[1, 2].GetValue<string>().ToLower() == "auto" ? ExecutionType.AUTO : ExecutionType.MANUAL;
-            if (_validationActivity.ExecutionType == ExecutionType.MANUAL)
-            {
-                return;
-            }
-
-            if (worksheet.Cells[2, 1].GetValue<string>().ToLower().Trim() != "title")
-            {
-                throw new Exception($"Invalid title on worksheet {worksheet.Name}.");
-            }
-
-            if (worksheet.Cells[3, 1].GetValue<string>().ToLower().Trim() != "action")
-            {
-                throw new Exception($"Invalid action on worksheet {worksheet.Name}.");
-            }
-
-            if (worksheet.Cells[4, 1].GetValue<string>().ToLower().Trim() != "parameters")
-            {
-                throw new Exception($"Invalid parameters on worksheet {worksheet.Name}.");
-            }
-
-            _validationActivity.Title = worksheet.Cells[2, 2].GetValue<string>();
-            _validationActivity.Action = worksheet.Cells[3, 2].GetValue<string>();
-
-            #region Collect Parameters
-            _validationActivity.Parameters = new List<string>();
-            int row = 3;
-            while (true)
-            {
-                if (row > 3) 
-                {
-                    if (worksheet.Cells[row, 1].Value != null && !string.IsNullOrWhiteSpace(worksheet.Cells[row, 1].GetValue<string>()))
-                    {
-                        break;
-                    }
-                }
-
-                ExcelRange cell = worksheet.Cells[row, 2];
-                if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
-                {
-                    throw new Exception($"Invalid parameters on worksheet {worksheet.Name} row {row} column 2, parameter can't be empty.");
-                }
-
-                _validationActivity.Parameters.Add(cell.GetValue<string>());
-                row++;
-            }
-
-            _validationActivity.ExpectedSheetName = worksheet.Cells[row, 2].GetValue<string>();
-            row++;
-
-            var startRowResultValidation = row;
-            _validationActivity.ResultValidation = new List<string>();
-            while (true) 
-            {
-                if (row > startRowResultValidation) 
-                {
-                    if (worksheet.Cells[row, 1].Value != null && !string.IsNullOrWhiteSpace(worksheet.Cells[row, 1].GetValue<string>()))
-                    {
-                        break;
-                    }
-                }
-
-                ExcelRange cell = worksheet.Cells[row, 2];
-                if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
-                {
-                    break;
-                }
-
-                _validationActivity.ResultValidation.Add(cell.GetValue<string>());
-                row++;
-            }
-            #endregion
         }
 
         private IEnumerable<ExcelDataDefinition> ReadDefinition(ExcelWorksheet sheet)
