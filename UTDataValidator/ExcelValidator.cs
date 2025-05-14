@@ -137,9 +137,92 @@ namespace UTDataValidator
                     throw new Exception($"Sheet {_worksheetExpectedData} not found on excel {_excelPath}.");
                 }
 
+                CollectActivity(initData);
                 CollectInitData(initData);
                 CollectExpectedData(expectedData);
             }
+        }
+
+        public UTValidationActivity _validationActivity = new UTValidationActivity();
+        private void CollectActivity(ExcelWorksheet worksheet) 
+        {
+            var mode = worksheet.Cells[1, 1].GetValue<string>();
+            if (mode != "mode") {
+                return;
+            }
+
+            _validationActivity.ExecutionType = worksheet.Cells[1, 2].GetValue<string>().ToLower() == "auto" ? ExecutionType.AUTO : ExecutionType.MANUAL;
+            if (_validationActivity.ExecutionType == ExecutionType.MANUAL)
+            {
+                return;
+            }
+
+            if (worksheet.Cells[2, 1].GetValue<string>().ToLower().Trim() != "title")
+            {
+                throw new Exception($"Invalid title on worksheet {worksheet.Name}.");
+            }
+
+            if (worksheet.Cells[3, 1].GetValue<string>().ToLower().Trim() != "action")
+            {
+                throw new Exception($"Invalid action on worksheet {worksheet.Name}.");
+            }
+
+            if (worksheet.Cells[4, 1].GetValue<string>().ToLower().Trim() != "parameters")
+            {
+                throw new Exception($"Invalid parameters on worksheet {worksheet.Name}.");
+            }
+
+            _validationActivity.Title = worksheet.Cells[2, 2].GetValue<string>();
+            _validationActivity.Action = worksheet.Cells[3, 2].GetValue<string>();
+
+            #region Collect Parameters
+            _validationActivity.Parameters = new List<string>();
+            int row = 3;
+            while (true)
+            {
+                if (row > 3) 
+                {
+                    if (worksheet.Cells[row, 1].Value != null && !string.IsNullOrWhiteSpace(worksheet.Cells[row, 1].GetValue<string>()))
+                    {
+                        break;
+                    }
+                }
+
+                ExcelRange cell = worksheet.Cells[row, 2];
+                if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
+                {
+                    throw new Exception($"Invalid parameters on worksheet {worksheet.Name} row {row} column 2, parameter can't be empty.");
+                }
+
+                _validationActivity.Parameters.Add(cell.GetValue<string>());
+                row++;
+            }
+
+            _validationActivity.ExpectedSheetName = worksheet.Cells[row, 2].GetValue<string>();
+            row++;
+
+            var startRowResultValidation = row;
+            _validationActivity.ResultValidation = new List<string>();
+            while (true) 
+            {
+                if (row > startRowResultValidation) 
+                {
+                    if (worksheet.Cells[row, 1].Value != null && !string.IsNullOrWhiteSpace(worksheet.Cells[row, 1].GetValue<string>()))
+                    {
+                        break;
+                    }
+                }
+
+                ExcelRange cell = worksheet.Cells[row, 2];
+                if (cell == null || string.IsNullOrEmpty(cell.GetValue<string>()))
+                {
+                    break;
+                }
+
+                _validationActivity.ResultValidation.Add(cell.GetValue<string>());
+                row++;
+            }
+            #endregion
         }
 
         private IEnumerable<ExcelDataDefinition> ReadDefinition(ExcelWorksheet sheet)
@@ -147,6 +230,28 @@ namespace UTDataValidator
             Dictionary<string, ExcelDataDefinition> testDataMap = new Dictionary<string, ExcelDataDefinition>();
             int counterBlank = 0;
             int row = 1;
+
+            // find start row
+            while (counterBlank < 10) 
+            {
+                ExcelRange cell1 = sheet.Cells[row, 1];
+                ExcelRange cell2 = sheet.Cells[row, 2];
+                if ((cell1 == null || string.IsNullOrEmpty(cell1.GetValue<string>())) && (cell2 == null || string.IsNullOrEmpty(cell2.GetValue<string>())))
+                {
+                    counterBlank++;
+                    row++;
+                    continue;
+                }
+
+                counterBlank = 0;
+                if (cell1 != null && cell1.GetValue<string>().IsTableInfo())
+                {
+                    break;
+                }
+                
+                row++;
+            }
+
             while (counterBlank < 10)
             {
                 ExcelRange cell = sheet.Cells[row, 1];
