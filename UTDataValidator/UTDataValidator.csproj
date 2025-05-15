@@ -1,14 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.1;net451</TargetFrameworks>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+    	<Nullable>enable</Nullable>
 		<Authors>Yurizal Rosa Andika</Authors>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<Version>0.0.5-alpha.1</Version>
+		<Version>0.0.6-alpha.1</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="EPPlusFree" Version="4.5.3.8" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
 	</ItemGroup>
+	
 </Project>

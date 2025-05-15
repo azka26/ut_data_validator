@@ -1,11 +1,9 @@
-﻿// using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OfficeOpenXml;
+﻿using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace UTDataValidator
 {
@@ -17,6 +15,7 @@ namespace UTDataValidator
         private readonly string _worksheetInitData;
         private readonly string _worksheetExpectedData;
         private readonly IEventExcelValidator _eventExcelValidator;
+        public readonly UTValidationActivity _validationActivity;
         public ExcelTestDefinition InitialData { get; private set; }
         public ExcelTestDefinition ExpectedData { get; private set; }
         private readonly IAssertion _assert;
@@ -50,20 +49,37 @@ namespace UTDataValidator
             }
         }
 
-        public void ExecuteAction() 
+        public void Validate(UTValidationActivity utAct, UTContext context)
         {
-            if (ExpectedData.TestActions != null)
+            foreach (ExcelDataDefinition data in ExpectedData.ExcelDataDefinitions)
             {
-                foreach (TestAction action in ExpectedData.TestActions)
+                DataTable actual = _eventExcelValidator.ReadTable(data);
+                CompareDataTable(data, actual);
+            }
+
+            var expectedErrors = utAct.ErrorValidation ?? new List<string>();
+            var actualErrors = context.ErrorMessages ?? new List<string>();
+
+            expectedErrors = expectedErrors.Select(f => f.Trim()).ToList();
+            actualErrors = actualErrors.Select(f => f.Trim()).ToList();
+
+            foreach (var errorExpected in expectedErrors)
+            {
+                if (!actualErrors.Any(f => f == errorExpected))
                 {
-                    for (int i = 0; i < action.Loop; i++)
-                    {
-                        _eventExcelValidator.ExecuteAction(action);
-                    }
+                    throw new Exception($"Error message \"{errorExpected}\" not found on actual error messages.");
+                }
+            }
+            
+            foreach (var errorActual in actualErrors)
+            {
+                if (!expectedErrors.Any(f => f == errorActual))
+                {
+                    throw new Exception($"Invalid actual error message \"{errorActual}\" should not exists.");
                 }
             }
         }
-
+        
         private void CompareDataTable(ExcelDataDefinition expected, DataTable actual)
         {
             _assert.AreEqual(expected.Data.Rows.Count, actual.Rows.Count, $"Different row count on table {expected.Table}.");
@@ -73,7 +89,7 @@ namespace UTDataValidator
 
             expected.Data = expected.Data.DefaultView.ToTable();
             actual = actual.DefaultView.ToTable();
-            
+
             for (var i = 0; i < expected.Data.Rows.Count; i++)
             {
                 var rowExpected = expected.Data.Rows[i];
@@ -147,6 +163,28 @@ namespace UTDataValidator
             Dictionary<string, ExcelDataDefinition> testDataMap = new Dictionary<string, ExcelDataDefinition>();
             int counterBlank = 0;
             int row = 1;
+
+            // find start row
+            while (counterBlank < 10) 
+            {
+                ExcelRange cell1 = sheet.Cells[row, 1];
+                ExcelRange cell2 = sheet.Cells[row, 2];
+                if ((cell1 == null || string.IsNullOrWhiteSpace(cell1.GetValue<string>())) && (cell2 == null || string.IsNullOrWhiteSpace(cell2.GetValue<string>())))
+                {
+                    counterBlank++;
+                    row++;
+                    continue;
+                }
+
+                counterBlank = 0;
+                if (cell1 != null && !string.IsNullOrWhiteSpace(cell1.GetValue<string>()) && cell1.GetValue<string>().IsTableInfo())
+                {
+                    break;
+                }
+                
+                row++;
+            }
+
             while (counterBlank < 10)
             {
                 ExcelRange cell = sheet.Cells[row, 1];

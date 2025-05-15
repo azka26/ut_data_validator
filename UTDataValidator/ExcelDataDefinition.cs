@@ -19,6 +19,7 @@ namespace UTDataValidator
             CellValue = cellValue;
             RowNumber = rowNumber;
         }
+
         public string Table { get; }
         public string WorksheetName { get; }
         public int RowNumber { get; }
