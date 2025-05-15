@@ -184,7 +184,10 @@ namespace UTDataValidator
             }
         }
 
-        private async Task RunTestAsync(FileInfo file, IServiceProvider mainProvider, ExcelWorksheet worksheet)
+        private async Task RunTestAsync(
+            FileInfo file,
+            IServiceProvider mainProvider,
+            ExcelWorksheet worksheet)
         {
             var activity = GetUTActivity(worksheet);
             if (activity.ExecutionType != ExecutionType.AUTO)
@@ -216,44 +219,47 @@ namespace UTDataValidator
             }
         }
 
-        protected async Task RunTestAsync(FileInfo excelFile, string initSheetName, string expectedSheetName, Func<Task> action)
-        {
-            if (excelFile == null)
-            {
-                throw new ArgumentNullException(nameof(excelFile));
-            }
+        // protected async Task RunTestAsync(FileInfo excelFile, string initSheetName, string expectedSheetName, Func<Task> action)
+        // {
+        //     if (excelFile == null)
+        //     {
+        //         throw new ArgumentNullException(nameof(excelFile));
+        //     }
 
-            if (!excelFile.Exists)
-            {
-                throw new FileNotFoundException($"File not found: {excelFile.FullName}");
-            }
+        //     if (!excelFile.Exists)
+        //     {
+        //         throw new FileNotFoundException($"File not found: {excelFile.FullName}");
+        //     }
 
-            if (string.IsNullOrEmpty(initSheetName))
-            {
-                throw new ArgumentNullException(nameof(initSheetName));
-            }
+        //     if (string.IsNullOrEmpty(initSheetName))
+        //     {
+        //         throw new ArgumentNullException(nameof(initSheetName));
+        //     }
 
-            if (string.IsNullOrEmpty(expectedSheetName))
-            {
-                throw new ArgumentNullException(nameof(expectedSheetName));
-            }
+        //     if (string.IsNullOrEmpty(expectedSheetName))
+        //     {
+        //         throw new ArgumentNullException(nameof(expectedSheetName));
+        //     }
 
-            if (action == null)
-            {
-                throw new ArgumentNullException(nameof(action));
-            }
+        //     if (action == null)
+        //     {
+        //         throw new ArgumentNullException(nameof(action));
+        //     }
 
-            var validator = new ExcelValidator(this, excelFile.FullName, initSheetName, expectedSheetName, this);
-            ResetConnection();
+        //     var validator = new ExcelValidator(this, excelFile.FullName, initSheetName, expectedSheetName, this);
+        //     ResetConnection();
 
-            await action.Invoke();
-            ResetConnection();
+        //     await action.Invoke();
+        //     ResetConnection();
 
-            validator.Validate();
-            ResetConnection();
-        }
+        //     validator.Validate();
+        //     ResetConnection();
+        // }
 
-        protected async Task RunTestAsync(FileInfo excelFile, string initSheetName, string expectedSheetName,
+        protected async Task RunTestAsync(
+            FileInfo excelFile,
+            string initSheetName,
+            string expectedSheetName,
             Func<IServiceProvider> createServiceProvider,
             Func<IServiceProvider, Task> action)
         {
@@ -297,7 +303,10 @@ namespace UTDataValidator
             ResetConnection();
         }
         
-        protected async Task RunTestAsync<T>(FileInfo excelFile, string initSheetName, string expectedSheetName,
+        protected async Task RunTestAsync<T>(
+            FileInfo excelFile,
+            string initSheetName,
+            string expectedSheetName,
             Func<IServiceProvider> createServiceProvider,
             Func<IServiceProvider, UTContext<T>, Task> action)
         {
