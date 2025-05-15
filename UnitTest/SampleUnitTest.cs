@@ -5,7 +5,7 @@ using UTDataValidator;
 
 namespace UnitTest;
 
-public class ItemUnitTest : AppUnitTestBase
+public class SampleUnitTest : SampleUnitTestBase
 {
     private FileInfo file = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sample", "Item", "item.xlsx"));
 

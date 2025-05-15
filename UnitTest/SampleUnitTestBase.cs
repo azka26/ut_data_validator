@@ -6,7 +6,7 @@ using UTDataValidator.SqlServer;
 
 namespace UnitTest;
 
-public abstract class AppUnitTestBase : SqlServerUnitTestBase
+public abstract class SampleUnitTestBase : SqlServerUnitTestBase
 {
     #region VALIDATION
     public override void AreEqual<T>(T expected, T actual, string message)
