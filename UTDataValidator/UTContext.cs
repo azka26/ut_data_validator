@@ -3,9 +3,8 @@ using System.Collections.Generic;
 
 namespace UTDataValidator
 {
-    public class UTContext<T>
+    public class UTContext
     {
-        public T OutputValue { get; set; }
         public List<string> ErrorMessages { get; set; }
     }
 }

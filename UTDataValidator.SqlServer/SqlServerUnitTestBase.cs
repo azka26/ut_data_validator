@@ -2,9 +2,8 @@
 using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using OfficeOpenXml;
-using UTDataValidator;
 
-namespace UnitTest;
+namespace UTDataValidator.SqlServer;
 
 public abstract class SqlServerUnitTestBase : ExcelValidationUTBase, IDisposable
 {
@@ -34,30 +33,6 @@ public abstract class SqlServerUnitTestBase : ExcelValidationUTBase, IDisposable
             _dbConnection = null;
         }
     }
-
-    #region Assertions
-    public override void AreEqual<T>(T expected, T actual, string message)
-    {
-        var dateTimeFormat = "{0:yyyy-MM-dd HH:mm:ss}";
-        if (expected != null && actual != null)
-        {
-            if (expected is DateTime expectedDate && actual is DateTime actualDate)
-            {
-                var expectedString = string.Format(dateTimeFormat, expectedDate);
-                var actualString = string.Format(dateTimeFormat, actualDate);
-                Assert.True(expectedString == actualString, message);
-                return;
-            }
-        }
-
-        Assert.True(expected.Equals(actual), message);
-    }
-
-    public override void IsTrue(bool condition, string message)
-    {
-        Assert.True(condition, message);
-    }
-    #endregion
 
     public override bool ConvertType(Type type, ExcelRange excelRange, out object outputValue)
     {
@@ -204,7 +179,6 @@ public abstract class SqlServerUnitTestBase : ExcelValidationUTBase, IDisposable
             {
                 using var command = GetConnection().CreateCommand();
                 command.CommandType = CommandType.Text;
-                // kasih command untuk update seed
                 command.CommandText = $"DBCC CHECKIDENT ('{itemDefinition.Table}', RESEED, {lastId});";
                 command.ExecuteNonQuery();
             }

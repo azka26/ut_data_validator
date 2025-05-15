@@ -1,12 +1,9 @@
-﻿// using Microsoft.VisualStudio.TestTools.UnitTesting;
-using OfficeOpenXml;
+﻿using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading;
 
 namespace UTDataValidator
 {
@@ -52,7 +49,7 @@ namespace UTDataValidator
             }
         }
 
-        public void Validate<T>(UTValidationActivity utAct, UTContext<T> context)
+        public void Validate(UTValidationActivity utAct, UTContext context)
         {
             foreach (ExcelDataDefinition data in ExpectedData.ExcelDataDefinitions)
             {
@@ -60,28 +57,25 @@ namespace UTDataValidator
                 CompareDataTable(data, actual);
             }
 
-            if (utAct.ExecutionType == ExecutionType.MANUAL)
+            var expectedErrors = utAct.ErrorValidation ?? new List<string>();
+            var actualErrors = context.ErrorMessages ?? new List<string>();
+
+            expectedErrors = expectedErrors.Select(f => f.Trim()).ToList();
+            actualErrors = actualErrors.Select(f => f.Trim()).ToList();
+
+            foreach (var errorExpected in expectedErrors)
             {
-                var expectedErrors = utAct.ErrorValidation ?? new List<string>();
-                var actualErrors = context.ErrorMessages ?? new List<string>();
-
-                expectedErrors = expectedErrors.Select(f => f.Trim()).ToList();
-                actualErrors = actualErrors.Select(f => f.Trim()).ToList();
-
-                foreach (var errorExpected in expectedErrors)
+                if (!actualErrors.Any(f => f == errorExpected))
                 {
-                    if (!actualErrors.Any(f => f == errorExpected))
-                    {
-                        throw new Exception($"Error message \"{errorExpected}\" not found on actual error messages.");
-                    }
+                    throw new Exception($"Error message \"{errorExpected}\" not found on actual error messages.");
                 }
-                
-                foreach (var errorActual in actualErrors)
+            }
+            
+            foreach (var errorActual in actualErrors)
+            {
+                if (!expectedErrors.Any(f => f == errorActual))
                 {
-                    if (!expectedErrors.Any(f => f == errorActual))
-                    {
-                        throw new Exception($"Invalid actual error message \"{errorActual}\" should not exists.");
-                    }
+                    throw new Exception($"Invalid actual error message \"{errorActual}\" should not exists.");
                 }
             }
         }

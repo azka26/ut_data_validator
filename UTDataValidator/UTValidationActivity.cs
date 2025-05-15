@@ -4,12 +4,12 @@ namespace UTDataValidator
 {
     public class UTValidationActivity
     {
-        public ExecutionType ExecutionType { get; set; } = ExecutionType.MANUAL;
-        public string Title { get; set; } = string.Empty;
-        public string Action { get; set; } = string.Empty;
-        public List<string> Parameters { get; set; } = new List<string>();
-        public string ExpectedSheetName { get; set; } = string.Empty;
-        public string ExpectedData { get; set; } = string.Empty;
-        public List<string> ErrorValidation { get; set; } = new List<string>();
+        public string TestCase { get; set; } = string.Empty;
+        public string ExpectedSheet { get; set; } = string.Empty;
+        public List<string> ErrorValidation { get; } = new List<string>();
+
+        // public string Action { get; set; } = string.Empty;
+        // public List<string> Parameters { get; set; } = new List<string>();
+        // public ExecutionType ExecutionType { get; set; } = ExecutionType.MANUAL;
     }
 }

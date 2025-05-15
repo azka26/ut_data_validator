@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../UTDataValidator.SqlServer/UTDataValidator.SqlServer.csproj" />
     <ProjectReference Include="../UTDataValidator/UTDataValidator.csproj" />
   </ItemGroup>
 

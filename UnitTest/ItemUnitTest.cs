@@ -28,12 +28,12 @@ public class ItemUnitTest : AppUnitTestBase
     [Fact]
     public async Task CompareDataAndError_Invalid_Test()
     {
-        await RunTestAsync<bool>(
+        await RunTestAsync(
             file,
             "InitSubmitInvalidData",
             "InitSubmitInvalidData",
             () => GetServiceProvider(),
-            async (IServiceProvider provider, UTContext<bool> utContext) =>
+            async (IServiceProvider provider, UTContext utContext) =>
             {
                 // CALL SERVICE HERE
                 var sampleService = provider.GetRequiredService<ISampleService>();
@@ -50,17 +50,17 @@ public class ItemUnitTest : AppUnitTestBase
     {
         await Assert.ThrowsAsync<Exception>(async () =>
         {
-            await RunTestAsync<bool>(
+            await RunTestAsync(
                 file,
                 "InitSubmitInvalidData",
                 "InitSubmitInvalidData",
                 () => GetServiceProvider(),
-                async (IServiceProvider provider, UTContext<bool> utContext) =>
+                async (IServiceProvider provider, UTContext utContext) =>
                 {
                     // CALL SERVICE HERE
                     var sampleService = provider.GetRequiredService<ISampleService>();
                     await sampleService.DoSomethingAsync("error_3");
-                    
+
                     // SET ERROR TO UT CONTEXT
                     utContext.ErrorMessages = sampleService.GetErrors();
                 }
@@ -73,21 +73,55 @@ public class ItemUnitTest : AppUnitTestBase
     {
         await Assert.ThrowsAsync<Exception>(async () =>
         {
-            await RunTestAsync<bool>(
+            await RunTestAsync(
                 file,
                 "InitSubmitInvalidData",
                 "InitSubmitInvalidData",
                 () => GetServiceProvider(),
-                async (IServiceProvider provider, UTContext<bool> utContext) =>
+                async (IServiceProvider provider, UTContext utContext) =>
                 {
                     // CALL SERVICE HERE
                     var sampleService = provider.GetRequiredService<ISampleService>();
                     await sampleService.DoSomethingAsync("error_1");
-                    
+
                     // SET ERROR TO UT CONTEXT
                     utContext.ErrorMessages = sampleService.GetErrors();
                 }
             );
         });
+    }
+    
+    [Fact]
+    public async Task CompareDataOnly_WithProvider_Valid_AutoSelectExpected_Test()
+    {
+        await RunTestAsync(
+            file,
+            "InitSubmitValidData",
+            () => GetServiceProvider(),
+            async (IServiceProvider provider, UTContext context) =>
+            {
+                var sampleService = provider.GetRequiredService<ISampleService>();
+                await sampleService.DoSomethingAsync("no error");
+            }
+        );
+    }
+    
+    [Fact]
+    public async Task CompareDataOnly_WithProvider_Invalid_AutoSelectExpected_Test()
+    {
+        await RunTestAsync(
+            file,
+            "InitSubmitInvalidData",
+            () => GetServiceProvider(),
+            async (IServiceProvider provider, UTContext context) =>
+            {
+                // CALL SERVICE HERE
+                var sampleService = provider.GetRequiredService<ISampleService>();
+                await sampleService.DoSomethingAsync("error_2");
+
+                // SET ERROR TO UT CONTEXT
+                context.ErrorMessages = sampleService.GetErrors();
+            }
+        );
     }
 }
