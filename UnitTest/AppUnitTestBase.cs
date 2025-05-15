@@ -11,12 +11,24 @@ public abstract class AppUnitTestBase : SqlServerUnitTestBase
     #region VALIDATION
     public override void AreEqual<T>(T expected, T actual, string message)
     {
-        throw new NotImplementedException();
+        var dateTimeFormat = "{0:yyyy-MM-dd HH:mm:ss}";
+        if (expected != null && actual != null)
+        {
+            if (expected is DateTime expectedDate && actual is DateTime actualDate)
+            {
+                var expectedString = string.Format(dateTimeFormat, expectedDate);
+                var actualString = string.Format(dateTimeFormat, actualDate);
+                Assert.True(expectedString == actualString, message);
+                return;
+            }
+        }
+
+        Assert.True(expected.Equals(actual), message);
     }
 
     public override void IsTrue(bool condition, string message)
     {
-        throw new NotImplementedException();
+        Assert.True(condition, message);
     }
 
     public override void CustomValidate(string validationName, DataRow expected, DataRow actual, string tableName, string columnName, int excelRowNumber)
@@ -27,7 +39,7 @@ public abstract class AppUnitTestBase : SqlServerUnitTestBase
 
     protected override string GetSqlServerConnectionString()
     {
-        return "Server=localhost,2022;Database=unit_test;User Id=sa;Password=AMNDev@2022;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;";
+        return "Server=localhost,2022;Database=unit_test;User Id=sa;Password=AZDev@2022;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;";
     }
 
     private IServiceProvider _serviceProvider;
