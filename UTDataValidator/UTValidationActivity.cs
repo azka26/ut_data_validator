@@ -9,6 +9,7 @@ namespace UTDataValidator
         public string Action { get; set; } = string.Empty;
         public List<string> Parameters { get; set; } = new List<string>();
         public string ExpectedSheetName { get; set; } = string.Empty;
-        public List<string> ResultValidation { get; set; } = new List<string>();
+        public string ExpectedData { get; set; } = string.Empty;
+        public List<string> ErrorValidation { get; set; } = new List<string>();
     }
 }

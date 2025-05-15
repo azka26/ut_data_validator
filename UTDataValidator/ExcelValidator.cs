@@ -6,6 +6,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace UTDataValidator
 {
@@ -50,6 +51,40 @@ namespace UTDataValidator
                 CompareDataTable(data, actual);
             }
         }
+
+        public void Validate<T>(UTValidationActivity utAct, UTContext<T> context)
+        {
+            foreach (ExcelDataDefinition data in ExpectedData.ExcelDataDefinitions)
+            {
+                DataTable actual = _eventExcelValidator.ReadTable(data);
+                CompareDataTable(data, actual);
+            }
+
+            if (utAct.ExecutionType == ExecutionType.MANUAL)
+            {
+                var expectedErrors = utAct.ErrorValidation ?? new List<string>();
+                var actualErrors = context.ErrorMessages ?? new List<string>();
+
+                expectedErrors = expectedErrors.Select(f => f.Trim()).ToList();
+                actualErrors = actualErrors.Select(f => f.Trim()).ToList();
+
+                foreach (var errorExpected in expectedErrors)
+                {
+                    if (!actualErrors.Any(f => f == errorExpected))
+                    {
+                        throw new Exception($"Error message \"{errorExpected}\" not found on actual error messages.");
+                    }
+                }
+                
+                foreach (var errorActual in actualErrors)
+                {
+                    if (!expectedErrors.Any(f => f == errorActual))
+                    {
+                        throw new Exception($"Invalid actual error message \"{errorActual}\" should not exists.");
+                    }
+                }
+            }
+        }
         
         private void CompareDataTable(ExcelDataDefinition expected, DataTable actual)
         {
@@ -60,7 +95,7 @@ namespace UTDataValidator
 
             expected.Data = expected.Data.DefaultView.ToTable();
             actual = actual.DefaultView.ToTable();
-            
+
             for (var i = 0; i < expected.Data.Rows.Count; i++)
             {
                 var rowExpected = expected.Data.Rows[i];
@@ -140,7 +175,7 @@ namespace UTDataValidator
             {
                 ExcelRange cell1 = sheet.Cells[row, 1];
                 ExcelRange cell2 = sheet.Cells[row, 2];
-                if ((cell1 == null || string.IsNullOrEmpty(cell1.GetValue<string>())) && (cell2 == null || string.IsNullOrEmpty(cell2.GetValue<string>())))
+                if ((cell1 == null || string.IsNullOrWhiteSpace(cell1.GetValue<string>())) && (cell2 == null || string.IsNullOrWhiteSpace(cell2.GetValue<string>())))
                 {
                     counterBlank++;
                     row++;
@@ -148,7 +183,7 @@ namespace UTDataValidator
                 }
 
                 counterBlank = 0;
-                if (cell1 != null && cell1.GetValue<string>().IsTableInfo())
+                if (cell1 != null && !string.IsNullOrWhiteSpace(cell1.GetValue<string>()) && cell1.GetValue<string>().IsTableInfo())
                 {
                     break;
                 }
