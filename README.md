@@ -114,46 +114,6 @@ public class SampleUnitTest : SampleUnitTestBase
             }
         );
     }
-
-    [Fact]
-    public async Task CompareDataAndError_Invalid_ErrorActNotExistOnExp_Test()
-    {
-        await Assert.ThrowsAsync<Exception>(async () =>
-        {
-            await RunTestAsync(
-                file,
-                "InitSubmitInvalidData",
-                "InitSubmitInvalidData",
-                () => GetServiceProvider(),
-                async (IServiceProvider provider, UTContext utContext) =>
-                {
-                    var sampleService = provider.GetRequiredService<ISampleService>();
-                    await sampleService.DoSomethingAsync("error_3");
-                    utContext.ErrorMessages = sampleService.GetErrors();
-                }
-            );
-        });
-    }
-
-    [Fact]
-    public async Task CompareDataAndError_Invalid_ErrorExpNotExistOnAct_Test()
-    {
-        await Assert.ThrowsAsync<Exception>(async () =>
-        {
-            await RunTestAsync(
-                file,
-                "InitSubmitInvalidData",
-                "InitSubmitInvalidData",
-                () => GetServiceProvider(),
-                async (IServiceProvider provider, UTContext utContext) =>
-                {
-                    var sampleService = provider.GetRequiredService<ISampleService>();
-                    await sampleService.DoSomethingAsync("error_1");
-                    utContext.ErrorMessages = sampleService.GetErrors();
-                }
-            );
-        });
-    }
     
     [Fact]
     public async Task CompareDataOnly_WithProvider_Valid_AutoSelectExpected_Test()
