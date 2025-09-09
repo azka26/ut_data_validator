@@ -13,11 +13,13 @@
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+    <PackageReference Include="Npgsql" Version="8.0.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../UTDataValidator.SqlServer/UTDataValidator.SqlServer.csproj" />
     <ProjectReference Include="../UTDataValidator/UTDataValidator.csproj" />
+    <ProjectReference Include="../UTDataValidator.PostgreSql/UTDataValidator.PostgreSql.csproj" />
   </ItemGroup>
 
   <ItemGroup>
