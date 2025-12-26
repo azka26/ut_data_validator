@@ -17,6 +17,7 @@ namespace UTDataValidator
         public abstract void IsTrue(bool condition, string message);
         public abstract void CustomValidate(string validationName, DataRow expected, DataRow actual, string tableName, string columnName, int excelRowNumber);
         protected abstract void ResetConnection();
+        protected abstract string GetConnectionString();
 
         private UTValidationActivity GetUTActivity(ExcelWorksheet worksheet)
         {

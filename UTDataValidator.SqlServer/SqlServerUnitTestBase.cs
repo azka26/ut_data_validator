@@ -7,13 +7,12 @@ namespace UTDataValidator.SqlServer;
 
 public abstract class SqlServerUnitTestBase : ExcelValidationUTBase, IDisposable
 {
-    protected abstract string GetSqlServerConnectionString();
     private DbConnection? _dbConnection;
     private DbConnection GetConnection()
     {
         if (_dbConnection == null)
         {
-            _dbConnection = new SqlConnection(GetSqlServerConnectionString());
+            _dbConnection = new SqlConnection(GetConnectionString());
         }
 
         if (_dbConnection.State != ConnectionState.Open)
@@ -115,73 +114,127 @@ public abstract class SqlServerUnitTestBase : ExcelValidationUTBase, IDisposable
     public override void InitData(IEnumerable<ExcelDataDefinition> excelDataDefinition)
     {
         var listDefinitions = excelDataDefinition.ToList();
-
-        var deleteSequences = listDefinitions.ToList();
-        deleteSequences.Reverse();
-        foreach (var item in deleteSequences)
+        var connection = GetConnection();
+        
+        // Start transaction for better performance
+        using var transaction = connection.BeginTransaction();
+        
+        try
         {
-            ExecuteNonQuery($"DELETE FROM {item.Table}");
-        }
-
-        foreach (var itemDefinition in listDefinitions)
-        {
-            var isAutoIncrement = IsAutoIncrement(itemDefinition.Data);
-            var keyValueMap = new Dictionary<string, string>();
-            foreach (DataColumn column in itemDefinition.Data.Columns)
+            // Delete data in reverse order
+            var deleteSequences = listDefinitions.ToList();
+            deleteSequences.Reverse();
+            foreach (var item in deleteSequences)
             {
-                keyValueMap.Add(column.ColumnName, $"@{column.ColumnName}");
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                
+                // Use TRUNCATE if possible (faster), fallback to DELETE
+                try
+                {
+                    command.CommandText = $"TRUNCATE TABLE {item.Table}";
+                    command.ExecuteNonQuery();
+                }
+                catch
+                {
+                    // Fallback to DELETE if TRUNCATE fails (e.g., foreign keys)
+                    command.CommandText = $"DELETE FROM {item.Table}";
+                    command.ExecuteNonQuery();
+                }
             }
 
-            var sqlInsert = $@"
-                INSERT INTO {itemDefinition.Table} ({string.Join(", ", keyValueMap.Keys.ToList())}) 
-                    VALUES ({string.Join(", ", keyValueMap.Values.ToList())});
-            ";
-
-            var lastId = 0;
-            foreach (DataRow dataRow in itemDefinition.Data.Rows)
+            // Insert data
+            foreach (var itemDefinition in listDefinitions)
             {
-                using var command = GetConnection().CreateCommand();
+                if (itemDefinition.Data.Rows.Count == 0)
+                    continue;
+
+                var isAutoIncrement = IsAutoIncrement(itemDefinition.Data);
+                var columns = new List<string>();
+                foreach (DataColumn column in itemDefinition.Data.Columns)
+                {
+                    columns.Add(column.ColumnName);
+                }
+
+                var parameterNames = columns.Select(c => $"@{c}").ToList();
+                var sqlInsert = $@"INSERT INTO {itemDefinition.Table} ({string.Join(", ", columns)}) 
+                                   VALUES ({string.Join(", ", parameterNames)});";
+
+                // Toggle IDENTITY_INSERT once per table (not per row)
+                if (isAutoIncrement)
+                {
+                    using var identityCommand = connection.CreateCommand();
+                    identityCommand.Transaction = transaction;
+                    identityCommand.CommandText = $"SET IDENTITY_INSERT {itemDefinition.Table} ON";
+                    identityCommand.ExecuteNonQuery();
+                }
+
+                var lastId = 0;
+                
+                // Prepare command once, reuse for all rows
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = sqlInsert;
                 command.CommandType = CommandType.Text;
 
-                var sqlList = new List<string>();
-                if (isAutoIncrement)
+                // Add parameters (will be updated with values in loop)
+                foreach (var columnName in columns)
                 {
-                    sqlList.Add($"SET IDENTITY_INSERT {itemDefinition.Table} ON");
+                    command.Parameters.Add(new SqlParameter($"@{columnName}", SqlDbType.Variant));
                 }
 
-                sqlList.Add(sqlInsert);
-
-                if (isAutoIncrement)
+                // Batch insert rows
+                foreach (DataRow dataRow in itemDefinition.Data.Rows)
                 {
-                    sqlList.Add($"SET IDENTITY_INSERT {itemDefinition.Table} OFF");
-                }
-
-                foreach (DataColumn dataColumn in itemDefinition.Data.Columns)
-                {
-                    var sqlParameter =
-                        new Microsoft.Data.SqlClient.SqlParameter($"@{dataColumn.ColumnName}", dataRow[dataColumn.ColumnName]);
-                    command.Parameters.Add(sqlParameter);
-                    if (dataColumn.AutoIncrement)
+                    // Update parameter values
+                    for (int i = 0; i < columns.Count; i++)
                     {
-                        var id = Convert.ToInt32(dataRow[dataColumn.ColumnName]);
-                        if (lastId < id)
+                        var columnName = columns[i];
+                        var value = dataRow[columnName];
+                        command.Parameters[$"@{columnName}"].Value = value ?? DBNull.Value;
+                        
+                        // Track last ID for auto-increment
+                        if (itemDefinition.Data.Columns[columnName].AutoIncrement)
                         {
-                            lastId = id;
+                            var id = Convert.ToInt32(value);
+                            if (lastId < id)
+                            {
+                                lastId = id;
+                            }
                         }
                     }
+
+                    command.ExecuteNonQuery();
                 }
 
-                command.CommandText = string.Join(Environment.NewLine, sqlList);
-                command.ExecuteNonQuery();
+                // Turn off IDENTITY_INSERT and reseed
+                if (isAutoIncrement)
+                {
+                    using var identityOffCommand = connection.CreateCommand();
+                    identityOffCommand.Transaction = transaction;
+                    identityOffCommand.CommandText = $"SET IDENTITY_INSERT {itemDefinition.Table} OFF";
+                    identityOffCommand.ExecuteNonQuery();
+
+                    if (lastId > 0)
+                    {
+                        using var reseedCommand = connection.CreateCommand();
+                        reseedCommand.Transaction = transaction;
+                        reseedCommand.CommandText = $"DBCC CHECKIDENT ('{itemDefinition.Table}', RESEED, {lastId});";
+                        reseedCommand.ExecuteNonQuery();
+                    }
+                }
             }
 
-            if (isAutoIncrement)
-            {
-                using var command = GetConnection().CreateCommand();
-                command.CommandType = CommandType.Text;
-                command.CommandText = $"DBCC CHECKIDENT ('{itemDefinition.Table}', RESEED, {lastId});";
-                command.ExecuteNonQuery();
-            }
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+        finally
+        {
+            ResetConnection();
         }
     }
 
