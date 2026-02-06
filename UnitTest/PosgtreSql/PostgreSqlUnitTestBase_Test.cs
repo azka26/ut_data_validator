@@ -38,7 +38,7 @@ public abstract class PostgreSqlUnitTestBase_Test : PostgreSqlUnitTestBase
     }
     #endregion
 
-    protected override string GetPostgreSqlConnectionString()
+    protected override string GetConnectionString()
     {
         return "Server=localhost;Port=5432;Database=dbname;User ID=postgres;Password=test123;";
     }
@@ -52,7 +52,7 @@ public abstract class PostgreSqlUnitTestBase_Test : PostgreSqlUnitTestBase
         }
 
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddTransient<NpgsqlConnection>((provider) => new NpgsqlConnection(GetPostgreSqlConnectionString()));
+        serviceCollection.AddTransient<NpgsqlConnection>((provider) => new NpgsqlConnection(GetConnectionString()));
         serviceCollection.AddTransient<ISampleService, SampleService.SampleService>();
         _serviceProvider = serviceCollection.BuildServiceProvider();
         return _serviceProvider;
@@ -77,7 +77,7 @@ public class PostgreSqlSampleUnitTest : PostgreSqlUnitTestBase_Test
                     INSERT INTO citys 
                         (name, province_id, company_id, created_by, created_date, is_draft_record) 
                         VALUES ('Jakarta', '1', '1', 'system', '2025-01-01 00:00:00.000 +0700', '0')";
-                var pgCon = new NpgsqlConnection(GetPostgreSqlConnectionString());
+                var pgCon = new NpgsqlConnection(GetConnectionString());
                 await pgCon.OpenAsync();
                 var cmd = new NpgsqlCommand(sql, pgCon);
                 await cmd.ExecuteNonQueryAsync();

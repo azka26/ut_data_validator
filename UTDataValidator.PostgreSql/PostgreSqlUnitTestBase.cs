@@ -7,13 +7,12 @@ namespace UTDataValidator.PostgreSql;
 
 public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposable
 {
-    protected abstract string GetPostgreSqlConnectionString();
     private DbConnection? _dbConnection;
     private DbConnection GetConnection()
     {
         if (_dbConnection == null)
         {
-            _dbConnection = new NpgsqlConnection(GetPostgreSqlConnectionString());
+            _dbConnection = new NpgsqlConnection(GetConnectionString());
         }
 
         if (_dbConnection.State != ConnectionState.Open)
@@ -115,65 +114,125 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
     public override void InitData(IEnumerable<ExcelDataDefinition> excelDataDefinition)
     {
         var listDefinitions = excelDataDefinition.ToList();
-
-        var deleteSequences = listDefinitions.ToList();
-        deleteSequences.Reverse();
-        foreach (var item in deleteSequences)
+        var connection = GetConnection();
+        
+        // Start transaction for better performance
+        using var transaction = connection.BeginTransaction();
+        
+        try
         {
-            ExecuteNonQuery($"DELETE FROM {item.Table}");
-        }
-
-        foreach (var itemDefinition in listDefinitions)
-        {
-            var isAutoIncrement = IsAutoIncrement(itemDefinition.Data, itemDefinition.Table);
-            var keyValueMap = new Dictionary<string, string>();
-            var allColumns = new List<string>();
-            foreach (DataColumn column in itemDefinition.Data.Columns)
+            // Delete data in reverse order
+            var deleteSequences = listDefinitions.ToList();
+            deleteSequences.Reverse();
+            foreach (var item in deleteSequences)
             {
-                keyValueMap.Add(column.ColumnName, $"@{column.ColumnName}");
-                allColumns.Add(column.ColumnName);
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                
+                // Use TRUNCATE if possible (faster), fallback to DELETE
+                try
+                {
+                    command.CommandText = $"TRUNCATE TABLE {item.Table} CASCADE";
+                    command.ExecuteNonQuery();
+                }
+                catch
+                {
+                    // Fallback to DELETE if TRUNCATE fails
+                    command.CommandText = $"DELETE FROM {item.Table}";
+                    command.ExecuteNonQuery();
+                }
             }
 
-            var overridingClause = ""; // Removed OVERRIDING for compatibility
-            var sqlInsert = $@"
-                INSERT INTO {itemDefinition.Table} ({string.Join(", ", allColumns)}) 
-                    VALUES ({string.Join(", ", keyValueMap.Values.ToList())}){overridingClause};
-            ";
-
-            var lastId = 0;
-            foreach (DataRow dataRow in itemDefinition.Data.Rows)
+            // Insert data
+            foreach (var itemDefinition in listDefinitions)
             {
-                using var command = GetConnection().CreateCommand();
-                command.CommandType = CommandType.Text;
+                if (itemDefinition.Data.Rows.Count == 0)
+                    continue;
 
-                command.CommandText = sqlInsert;
-
-                foreach (DataColumn dataColumn in itemDefinition.Data.Columns)
+                var isAutoIncrement = IsAutoIncrement(itemDefinition.Data, itemDefinition.Table);
+                var columns = new List<string>();
+                foreach (DataColumn column in itemDefinition.Data.Columns)
                 {
-                    var sqlParameter = new NpgsqlParameter($"@{dataColumn.ColumnName}", dataRow[dataColumn.ColumnName]);
-                    command.Parameters.Add(sqlParameter);
-                    if (dataColumn.AutoIncrement || (isAutoIncrement && dataColumn.ColumnName.ToLower() == "id"))
-                    {
-                        var id = Convert.ToInt32(dataRow[dataColumn.ColumnName]);
-                        if (lastId < id)
-                        {
-                            lastId = id;
-                        }
-                    }
+                    columns.Add(column.ColumnName);
                 }
 
-                command.ExecuteNonQuery();
+                var parameterNames = columns.Select(c => $"@{c}").ToList();
+                var sqlInsert = $@"INSERT INTO {itemDefinition.Table} ({string.Join(", ", columns)}) 
+                                   VALUES ({string.Join(", ", parameterNames)})";
+
+                var lastId = 0;
+                
+                // Prepare command once, reuse for all rows
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = sqlInsert;
+                command.CommandType = CommandType.Text;
+
+                // Add parameters (will be updated with values in loop)
+                foreach (var columnName in columns)
+                {
+                    command.Parameters.Add(new NpgsqlParameter($"@{columnName}", DBNull.Value));
+                }
+
+                // Batch insert rows
+                foreach (DataRow dataRow in itemDefinition.Data.Rows)
+                {
+                    // Update parameter values
+                    for (int i = 0; i < columns.Count; i++)
+                    {
+                        var columnName = columns[i];
+                        var value = dataRow[columnName];
+                        command.Parameters[$"@{columnName}"].Value = value ?? DBNull.Value;
+                        
+                        // Track last ID for auto-increment
+                        if (itemDefinition.Data.Columns[columnName].AutoIncrement || 
+                            (isAutoIncrement && columnName.ToLower() == "id"))
+                        {
+                            if (value != null && value != DBNull.Value)
+                            {
+                                var id = Convert.ToInt32(value);
+                                if (lastId < id)
+                                {
+                                    lastId = id;
+                                }
+                            }
+                        }
+                    }
+
+                    command.ExecuteNonQuery();
+                }
+
+                // Reset sequence if needed
+                if (isAutoIncrement && lastId > 0)
+                {
+                    // Get actual sequence name from database
+                    var sequenceQuery = $@"
+                        SELECT pg_get_serial_sequence('{itemDefinition.Table}', 'id') as seq_name";
+                    
+                    using var seqCommand = connection.CreateCommand();
+                    seqCommand.Transaction = transaction;
+                    seqCommand.CommandText = sequenceQuery;
+                    
+                    var seqName = seqCommand.ExecuteScalar()?.ToString();
+                    if (!string.IsNullOrEmpty(seqName))
+                    {
+                        using var reseedCommand = connection.CreateCommand();
+                        reseedCommand.Transaction = transaction;
+                        reseedCommand.CommandText = $"SELECT setval('{seqName}', {lastId}, true)";
+                        reseedCommand.ExecuteNonQuery();
+                    }
+                }
             }
 
-            if (isAutoIncrement && lastId > 0)
-            {
-                // Assuming sequence name is table_column_seq, common in PostgreSQL
-                var sequenceName = $"{itemDefinition.Table}_id_seq"; // Adjust if different
-                using var command = GetConnection().CreateCommand();
-                command.CommandType = CommandType.Text;
-                command.CommandText = $"ALTER SEQUENCE {sequenceName} RESTART WITH {lastId + 1};";
-                command.ExecuteNonQuery();
-            }
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+        finally {
+            ResetConnection();
         }
     }
 

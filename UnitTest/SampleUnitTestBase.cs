@@ -37,7 +37,7 @@ public abstract class SampleUnitTestBase : SqlServerUnitTestBase
     }
     #endregion
 
-    protected override string GetSqlServerConnectionString()
+    protected override string GetConnectionString()
     {
         return "Server=localhost,2022;Database=unit_test;User Id=sa;Password=AZDev@2022;TrustServerCertificate=True;Encrypt=False;Connection Timeout=30;";
     }
@@ -51,7 +51,7 @@ public abstract class SampleUnitTestBase : SqlServerUnitTestBase
         }
 
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddTransient<SqlConnection>((provider) => new SqlConnection(GetSqlServerConnectionString()));
+        serviceCollection.AddTransient<SqlConnection>((provider) => new SqlConnection(GetConnectionString()));
         serviceCollection.AddTransient<ISampleService, SampleService.SampleService>();
         _serviceProvider = serviceCollection.BuildServiceProvider();
         return _serviceProvider;
