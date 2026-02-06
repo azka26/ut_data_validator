@@ -267,5 +267,27 @@ namespace UTDataValidator
             validator.Validate(utAct, utContext);
             ResetConnection();
         }
+
+        protected async Task ValidateExcelAsync(
+            FileInfo excelFile,
+            string sheetToCheck)
+        {
+            if (excelFile == null)
+            {
+                throw new ArgumentNullException(nameof(excelFile));
+            }
+
+            if (!excelFile.Exists)
+            {
+                throw new FileNotFoundException($"File not found: {excelFile.FullName}");
+            }
+
+            if (string.IsNullOrEmpty(sheetToCheck))
+            {
+                throw new ArgumentNullException(nameof(sheetToCheck));
+            }
+
+            _ = new ExcelValidator(this, excelFile.FullName, sheetToCheck, sheetToCheck, this);
+        }
     }
 }
