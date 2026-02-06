@@ -124,4 +124,9 @@ public class SampleUnitTest : SampleUnitTestBase
             }
         );
     }
+
+    protected override string GetConnectionString()
+    {
+        throw new NotImplementedException();
+    }
 }
