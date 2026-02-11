@@ -7,8 +7,8 @@ namespace UTDataValidator.PostgreSql;
 
 public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposable
 {
-    private DbConnection? _dbConnection;
-    private DbConnection GetConnection()
+    protected DbConnection? _dbConnection;
+    protected DbConnection GetConnection()
     {
         if (_dbConnection == null)
         {
@@ -117,7 +117,7 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
         var connection = GetConnection();
         
         // Start transaction for better performance
-        using var transaction = connection.BeginTransaction();
+        // using var transaction = connection.BeginTransaction();
         
         try
         {
@@ -127,7 +127,7 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
             foreach (var item in deleteSequences)
             {
                 using var command = connection.CreateCommand();
-                command.Transaction = transaction;
+                // command.Transaction = transaction;
                 
                 // Use TRUNCATE if possible (faster), fallback to DELETE
                 try
@@ -137,9 +137,23 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                 }
                 catch
                 {
-                    // Fallback to DELETE if TRUNCATE fails
-                    command.CommandText = $"DELETE FROM {item.Table}";
-                    command.ExecuteNonQuery();
+                    try {
+                        // Fallback to DELETE if TRUNCATE fails
+                        command.CommandText = $"DELETE FROM {item.Table}";
+                        command.ExecuteNonQuery();
+                    }
+                    catch (Exception e)
+                    {
+                        AddError(new ErrorDescription()
+                        {
+                            WorksheetName = item.WorksheetName,
+                            RowNumber = item.RowNumber,
+                            Exception = e,
+                            ErrorMessage = $"Failed to clear table {item.Table}: {e.Message}"
+                        });
+                        
+                        continue;
+                    }
                 }
             }
 
@@ -164,7 +178,7 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                 
                 // Prepare command once, reuse for all rows
                 using var command = connection.CreateCommand();
-                command.Transaction = transaction;
+                // command.Transaction = transaction;
                 command.CommandText = sqlInsert;
                 command.CommandType = CommandType.Text;
 
@@ -199,7 +213,19 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                         }
                     }
 
-                    command.ExecuteNonQuery();
+                    try {
+                        command.ExecuteNonQuery();
+                    }
+                    catch (Exception e)
+                    {
+                        AddError(new ErrorDescription()
+                        {
+                            WorksheetName = itemDefinition.WorksheetName,
+                            RowNumber = itemDefinition.RowNumber,
+                            Exception = e,
+                            ErrorMessage = $"Failed to insert into table {itemDefinition.Table}: {e.Message}"
+                        });
+                    }
                 }
 
                 // Reset sequence if needed
@@ -210,25 +236,38 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                         SELECT pg_get_serial_sequence('{itemDefinition.Table}', 'id') as seq_name";
                     
                     using var seqCommand = connection.CreateCommand();
-                    seqCommand.Transaction = transaction;
+                    // seqCommand.Transaction = transaction;
                     seqCommand.CommandText = sequenceQuery;
                     
                     var seqName = seqCommand.ExecuteScalar()?.ToString();
                     if (!string.IsNullOrEmpty(seqName))
                     {
                         using var reseedCommand = connection.CreateCommand();
-                        reseedCommand.Transaction = transaction;
+                        // reseedCommand.Transaction = transaction;
                         reseedCommand.CommandText = $"SELECT setval('{seqName}', {lastId}, true)";
-                        reseedCommand.ExecuteNonQuery();
+
+                        try {
+                            reseedCommand.ExecuteNonQuery();
+                        }
+                        catch (Exception e)
+                        {
+                            AddError(new ErrorDescription()
+                            {
+                                WorksheetName = itemDefinition.WorksheetName,
+                                RowNumber = itemDefinition.RowNumber,
+                                Exception = e,
+                                ErrorMessage = $"Failed to reseed sequence {seqName} for table {itemDefinition.Table}: {e.Message}"
+                            });
+                        }
                     }
                 }
             }
 
-            transaction.Commit();
+            // transaction.Commit();
         }
         catch
         {
-            transaction.Rollback();
+            // transaction.Rollback();
             throw;
         }
         finally {
@@ -238,43 +277,109 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
 
     public override DataTable ReadTable(ExcelDataDefinition excelDataDefinition)
     {
+        var dataTable = new DataTable();
+        var sql = string.Empty;
+
         var fields = excelDataDefinition
                 .ColumnMapping
                 .Select(f => f.Value.ColumnName)
                 .ToList();
+        
+        // TRY TO READ ALL COLUMNS FIRST
+        try
+        {
+            sql = $"SELECT * FROM {excelDataDefinition.Table}";
+            using var command = GetConnection().CreateCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = sql;
+            using var reader = command.ExecuteReader();
+            dataTable.Load(reader);
+            reader.Close();
 
-        var sql = $"SELECT {string.Join(", ", fields)} FROM {excelDataDefinition.Table}";
+            foreach (var field in fields)
+            {
+                if (!dataTable.Columns.Contains(field))
+                {
+                    AddError(new ErrorDescription()
+                    {
+                        WorksheetName = excelDataDefinition.WorksheetName,
+                        RowNumber = excelDataDefinition.RowNumber,
+                        ErrorMessage = $"Column \"{field}\" defined in Excel definition is not found in table {excelDataDefinition.Table}."
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AddError(new ErrorDescription()
+            {
+                WorksheetName = excelDataDefinition.WorksheetName,
+                RowNumber = excelDataDefinition.RowNumber,
+                Exception = ex,
+                ErrorMessage = $"Failed to read table {excelDataDefinition.Table}: {ex.Message}"
+            });
+        }
 
-        var dataTable = new DataTable();
-        using var command = GetConnection().CreateCommand();
-        command.CommandType = CommandType.Text;
-        command.CommandText = sql;
-        using var reader = command.ExecuteReader();
-        dataTable.Load(reader);
-        reader.Close();
+        // try {
+        //     var fields = excelDataDefinition
+        //             .ColumnMapping
+        //             .Select(f => f.Value.ColumnName)
+        //             .ToList();
 
-        sql = $@"
+        //     sql = $"SELECT {string.Join(", ", fields)} FROM {excelDataDefinition.Table}";
+        //     using var command = GetConnection().CreateCommand();
+        //     command.CommandType = CommandType.Text;
+        //     command.CommandText = sql;
+        //     using var reader = command.ExecuteReader();
+        //     dataTable.Load(reader);
+        //     reader.Close();
+        // } 
+        // catch (Exception ex)
+        // {
+        //     AddError(new ErrorDescription()
+        //     {
+        //         WorksheetName = excelDataDefinition.WorksheetName,
+        //         RowNumber = excelDataDefinition.RowNumber,
+        //         Exception = ex,
+        //         ErrorMessage = $"Failed to read table {excelDataDefinition.Table}: {ex.Message}"
+        //     });
+        // }
+
+        try
+        {
+            sql = $@"
                 SELECT column_name
                 FROM information_schema.columns
                 WHERE table_name = '{excelDataDefinition.Table}' AND table_schema = 'public' AND is_identity = 'YES'
                 LIMIT 1;
-        ";
-        var resultTablePk = ExecuteQuery(sql);
-        if (resultTablePk.Rows.Count > 0 && resultTablePk.Rows[0]["column_name"] != null)
-        {
-            var pkColumn = resultTablePk.Rows[0]["column_name"].ToString();
-            if (!string.IsNullOrEmpty(pkColumn) && dataTable.Columns.Contains(pkColumn))
+            ";
+            var resultTablePk = ExecuteQuery(sql);
+            if (resultTablePk.Rows.Count > 0 && resultTablePk.Rows[0]["column_name"] != null)
             {
-                var column = dataTable.Columns[pkColumn];
-                if (column != null)
+                var pkColumn = resultTablePk.Rows[0]["column_name"].ToString();
+                if (!string.IsNullOrEmpty(pkColumn) && dataTable.Columns.Contains(pkColumn))
                 {
-                    column.AutoIncrement = true;
-                    column.AutoIncrementSeed = 1;
-                    column.AutoIncrementStep = 1;
+                    var column = dataTable.Columns[pkColumn];
+                    if (column != null)
+                    {
+                        column.AutoIncrement = true;
+                        column.AutoIncrementSeed = 1;
+                        column.AutoIncrementStep = 1;
+                    }
                 }
             }
         }
-
+        catch (Exception ex)
+        {
+            AddError(new ErrorDescription()
+            {
+                WorksheetName = excelDataDefinition.WorksheetName,
+                RowNumber = excelDataDefinition.RowNumber,
+                Exception = ex,
+                ErrorMessage = $"Failed to set auto-increment for table {excelDataDefinition.Table}: {ex.Message}"
+            });
+        }
+        
         return dataTable;
     }
 
