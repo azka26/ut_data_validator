@@ -10,7 +10,7 @@ namespace UTDataValidator
 {
     public abstract class ExcelValidationUTBase : IEventExcelValidator, IAssertion
     {
-        private List<ErrorDescription> _errors = new List<ErrorDescription>();
+        protected List<ErrorDescription> _errors = new List<ErrorDescription>();
         public abstract bool ConvertType(Type type, ExcelRange excelRange, out object outputValue);
         public abstract void InitData(IEnumerable<ExcelDataDefinition> excelDataDefinition);
         public abstract DataTable ReadTable(ExcelDataDefinition excelDataDefinition);
@@ -314,6 +314,8 @@ namespace UTDataValidator
             {
                 _errors = new List<ErrorDescription>();
             }
+            
+            _errors.Add(error);
         }
 
         public void ThrowIfErrors()

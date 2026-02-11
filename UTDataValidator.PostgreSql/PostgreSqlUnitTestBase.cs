@@ -117,7 +117,7 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
         var connection = GetConnection();
         
         // Start transaction for better performance
-        using var transaction = connection.BeginTransaction();
+        // using var transaction = connection.BeginTransaction();
         
         try
         {
@@ -127,7 +127,7 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
             foreach (var item in deleteSequences)
             {
                 using var command = connection.CreateCommand();
-                command.Transaction = transaction;
+                // command.Transaction = transaction;
                 
                 // Use TRUNCATE if possible (faster), fallback to DELETE
                 try
@@ -178,7 +178,7 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                 
                 // Prepare command once, reuse for all rows
                 using var command = connection.CreateCommand();
-                command.Transaction = transaction;
+                // command.Transaction = transaction;
                 command.CommandText = sqlInsert;
                 command.CommandType = CommandType.Text;
 
@@ -236,14 +236,14 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                         SELECT pg_get_serial_sequence('{itemDefinition.Table}', 'id') as seq_name";
                     
                     using var seqCommand = connection.CreateCommand();
-                    seqCommand.Transaction = transaction;
+                    // seqCommand.Transaction = transaction;
                     seqCommand.CommandText = sequenceQuery;
                     
                     var seqName = seqCommand.ExecuteScalar()?.ToString();
                     if (!string.IsNullOrEmpty(seqName))
                     {
                         using var reseedCommand = connection.CreateCommand();
-                        reseedCommand.Transaction = transaction;
+                        // reseedCommand.Transaction = transaction;
                         reseedCommand.CommandText = $"SELECT setval('{seqName}', {lastId}, true)";
 
                         try {
@@ -263,11 +263,11 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                 }
             }
 
-            transaction.Commit();
+            // transaction.Commit();
         }
         catch
         {
-            transaction.Rollback();
+            // transaction.Rollback();
             throw;
         }
         finally {
@@ -275,25 +275,40 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
         }
     }
 
-
     public override DataTable ReadTable(ExcelDataDefinition excelDataDefinition)
     {
         var dataTable = new DataTable();
         var sql = string.Empty;
-        try {
-            var fields = excelDataDefinition
-                    .ColumnMapping
-                    .Select(f => f.Value.ColumnName)
-                    .ToList();
 
-            sql = $"SELECT {string.Join(", ", fields)} FROM {excelDataDefinition.Table}";
+        var fields = excelDataDefinition
+                .ColumnMapping
+                .Select(f => f.Value.ColumnName)
+                .ToList();
+        
+        // TRY TO READ ALL COLUMNS FIRST
+        try
+        {
+            sql = $"SELECT * FROM {excelDataDefinition.Table}";
             using var command = GetConnection().CreateCommand();
             command.CommandType = CommandType.Text;
             command.CommandText = sql;
             using var reader = command.ExecuteReader();
             dataTable.Load(reader);
             reader.Close();
-        } 
+
+            foreach (var field in fields)
+            {
+                if (!dataTable.Columns.Contains(field))
+                {
+                    AddError(new ErrorDescription()
+                    {
+                        WorksheetName = excelDataDefinition.WorksheetName,
+                        RowNumber = excelDataDefinition.RowNumber,
+                        ErrorMessage = $"Column \"{field}\" defined in Excel definition is not found in table {excelDataDefinition.Table}."
+                    });
+                }
+            }
+        }
         catch (Exception ex)
         {
             AddError(new ErrorDescription()
@@ -304,6 +319,31 @@ public abstract class PostgreSqlUnitTestBase : ExcelValidationUTBase, IDisposabl
                 ErrorMessage = $"Failed to read table {excelDataDefinition.Table}: {ex.Message}"
             });
         }
+
+        // try {
+        //     var fields = excelDataDefinition
+        //             .ColumnMapping
+        //             .Select(f => f.Value.ColumnName)
+        //             .ToList();
+
+        //     sql = $"SELECT {string.Join(", ", fields)} FROM {excelDataDefinition.Table}";
+        //     using var command = GetConnection().CreateCommand();
+        //     command.CommandType = CommandType.Text;
+        //     command.CommandText = sql;
+        //     using var reader = command.ExecuteReader();
+        //     dataTable.Load(reader);
+        //     reader.Close();
+        // } 
+        // catch (Exception ex)
+        // {
+        //     AddError(new ErrorDescription()
+        //     {
+        //         WorksheetName = excelDataDefinition.WorksheetName,
+        //         RowNumber = excelDataDefinition.RowNumber,
+        //         Exception = ex,
+        //         ErrorMessage = $"Failed to read table {excelDataDefinition.Table}: {ex.Message}"
+        //     });
+        // }
 
         try
         {
