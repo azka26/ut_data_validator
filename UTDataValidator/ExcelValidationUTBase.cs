@@ -10,6 +10,7 @@ namespace UTDataValidator
 {
     public abstract class ExcelValidationUTBase : IEventExcelValidator, IAssertion
     {
+        private List<ErrorDescription> _errors = new List<ErrorDescription>();
         public abstract bool ConvertType(Type type, ExcelRange excelRange, out object outputValue);
         public abstract void InitData(IEnumerable<ExcelDataDefinition> excelDataDefinition);
         public abstract DataTable ReadTable(ExcelDataDefinition excelDataDefinition);
@@ -19,7 +20,7 @@ namespace UTDataValidator
         protected abstract void ResetConnection();
         protected abstract string GetConnectionString();
 
-        private UTValidationActivity GetUTActivity(ExcelWorksheet worksheet)
+        protected UTValidationActivity GetUTActivity(ExcelWorksheet worksheet)
         {
             var mapRow = new Dictionary<string, int>()
             {
@@ -144,6 +145,8 @@ namespace UTDataValidator
             ResetConnection();
 
             validator.Validate();
+            ThrowIfErrors();
+
             ResetConnection();
         }
 
@@ -195,6 +198,8 @@ namespace UTDataValidator
             var worksheet = excelPackage.Workbook.Worksheets[initSheetName];
             var utAct = GetUTActivity(worksheet);
             validator.Validate(utAct, utContext);
+            ThrowIfErrors();
+
             ResetConnection();
         }
         
@@ -266,6 +271,8 @@ namespace UTDataValidator
             ResetConnection();
             
             validator.Validate(utAct, utContext);
+            ThrowIfErrors();
+
             ResetConnection();
         }
 
@@ -289,6 +296,32 @@ namespace UTDataValidator
             }
 
             _ = new ExcelValidator(this, excelFile.FullName, sheetToCheck, sheetToCheck, this);
+        }
+
+        public List<ErrorDescription> GetErrors()
+        {
+            if (_errors == null)
+            {
+                _errors = new List<ErrorDescription>();
+            }
+
+            return _errors;
+        }
+
+        public void AddError(ErrorDescription error)
+        {
+            if (_errors == null)
+            {
+                _errors = new List<ErrorDescription>();
+            }
+        }
+
+        public void ThrowIfErrors()
+        {
+            if (_errors != null && _errors.Count > 0)
+            {
+                throw new ExcelValidationException("Excel validation failed.", _errors);
+            }
         }
     }
 }

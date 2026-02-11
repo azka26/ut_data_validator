@@ -47,6 +47,8 @@ namespace UTDataValidator
                 DataTable actual = _eventExcelValidator.ReadTable(data);
                 CompareDataTable(data, actual);
             }
+            
+            _eventExcelValidator.ThrowIfErrors();
         }
 
         public void Validate(UTValidationActivity utAct, UTContext context)
@@ -67,7 +69,11 @@ namespace UTDataValidator
             {
                 if (!actualErrors.Any(f => f == errorExpected))
                 {
-                    throw new Exception($"Error message \"{errorExpected}\" not found on actual error messages.");
+                    _eventExcelValidator.AddError(new ErrorDescription()
+                    {
+                        ErrorMessage = $"Expected error message \"{errorExpected}\" not found on actual error messages."
+                    });
+                    continue;
                 }
             }
             
@@ -75,7 +81,11 @@ namespace UTDataValidator
             {
                 if (!expectedErrors.Any(f => f == errorActual))
                 {
-                    throw new Exception($"Invalid actual error message \"{errorActual}\" should not exists.");
+                    _eventExcelValidator.AddError(new ErrorDescription()
+                    {
+                        ErrorMessage = $"Invalid actual error message \"{errorActual}\" should not exists."
+                    });
+                    continue;
                 }
             }
         }
@@ -152,9 +162,12 @@ namespace UTDataValidator
                 {
                     throw new Exception($"Sheet {_worksheetExpectedData} not found on excel {_excelPath}.");
                 }
-
+                
                 CollectInitData(initData);
+                _eventExcelValidator.ThrowIfErrors();
+
                 CollectExpectedData(expectedData);
+                _eventExcelValidator.ThrowIfErrors();
             }
         }
 
@@ -202,7 +215,15 @@ namespace UTDataValidator
                     ExcelDataDefinition testData = new ExcelDataDefinition(value, row, sheet);
                     if (testDataMap.ContainsKey(testData.Table.ToLower()))
                     {
-                        throw new Exception($"Duplicate table name on worksheet {sheet.Name} between row {testData.RowNumber} and {testDataMap[testData.Table.ToLower()].RowNumber}.");
+                        _eventExcelValidator.AddError(new ErrorDescription()
+                        {
+                            ErrorMessage = $"Duplicate table name on worksheet {sheet.Name} between row {testData.RowNumber} and {testDataMap[testData.Table.ToLower()].RowNumber}.",
+                            WorksheetName = sheet.Name,
+                            RowNumber = testData.RowNumber
+                        });
+
+                        row++;
+                        continue;
                     }
 
                     testDataMap.Add(testData.Table.ToLower(), testData);
@@ -263,7 +284,15 @@ namespace UTDataValidator
 
                 if (parameters.ContainsKey(cell.GetValue<string>().ToLower()))
                 {
-                    throw new Exception($"Duplicate key action parameter on worksheet {sheet.Name}, column 1, row {row}.");
+                    _eventExcelValidator.AddError(new ErrorDescription()
+                    {
+                        ErrorMessage = $"Duplicate key action parameter on worksheet {sheet.Name}, column 1, row {row}.",
+                        WorksheetName = sheet.Name,
+                        RowNumber = row
+                    });
+                    
+                    row++;
+                    continue;
                 }
 
                 ExcelRange cellValue = sheet.Cells[row, valueColumn];
@@ -289,7 +318,14 @@ namespace UTDataValidator
                 ColumnDefinition columnDefinition = new ColumnDefinition(cell.GetValue<string>(), column);
                 if (testData.ColumnMapping.ContainsKey(columnDefinition.ColumnName.ToLower()))
                 {
-                    throw new Exception($"Duplicate column name on worksheet {sheet.Name} for table {testData.Table} column {columnDefinition.ColumnIndex} and {testData.ColumnMapping[columnDefinition.ColumnName].ColumnIndex}.");
+                    _eventExcelValidator.AddError(new ErrorDescription()
+                    {
+                        ErrorMessage = $"Duplicate column name on worksheet {sheet.Name} for table {testData.Table} column {columnDefinition.ColumnIndex} and {testData.ColumnMapping[columnDefinition.ColumnName].ColumnIndex}.",
+                        WorksheetName = sheet.Name,
+                        RowNumber = row
+                    });
+                    column++;
+                    continue;
                 }
 
                 testData.ColumnMapping.Add(columnDefinition.ColumnName.ToLower(), columnDefinition);
@@ -345,7 +381,13 @@ namespace UTDataValidator
                 {
                     if (!testData.Data.Columns.Contains(columnDefinition.ColumnName))
                     {
-                        throw new Exception($"Column {columnDefinition.ColumnName} on table {testData.Table} not found.");
+                        _eventExcelValidator.AddError(new ErrorDescription()
+                        {
+                            ErrorMessage = $"Column {columnDefinition.ColumnName} on table {testData.Table} not found.",
+                            WorksheetName = sheet.Name,
+                            RowNumber = row
+                        });
+                        continue;
                     }
                     
                     cell = sheet.Cells[row, columnDefinition.ColumnIndex];
@@ -362,7 +404,13 @@ namespace UTDataValidator
                         Object value = null;
                         if (!ConvertDataType(dataType, cell, out value))
                         {
-                            throw new Exception($"Failed set value to DataTable on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}.");
+                            _eventExcelValidator.AddError(new ErrorDescription()
+                            {
+                                ErrorMessage = $"Failed convert data type on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}.",
+                                WorksheetName = sheet.Name,
+                                RowNumber = row
+                            });
+                            continue;
                         }
 
                         column.ReadOnly = false;
@@ -370,7 +418,14 @@ namespace UTDataValidator
                     }
                     catch (Exception e)
                     {
-                        throw new Exception($"Failed set value to DataTable on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}.", e);
+                        _eventExcelValidator.AddError(new ErrorDescription()
+                        {
+                            ErrorMessage = $"Failed set value to DataTable on table {testData.Table} column {columnDefinition.ColumnName} excel row {row}. Exception: {e.Message}",
+                            WorksheetName = sheet.Name,
+                            RowNumber = row,
+                            Exception = e
+                        });
+                        continue;
                     }
                 }
 
@@ -445,13 +500,17 @@ namespace UTDataValidator
             foreach (ExcelDataDefinition item in testData)
             {
                 ReadExcelData(item, sheet);
+                _eventExcelValidator.ThrowIfErrors();
             }
 
             _eventExcelValidator.InitData(testData);
+            _eventExcelValidator.ThrowIfErrors();
+            
             InitialData = new ExcelTestDefinition()
             {
                 ExcelDataDefinitions = testData
             };
+            _eventExcelValidator.ThrowIfErrors();
         }
 
         private void CollectExpectedData(ExcelWorksheet sheet)
@@ -464,6 +523,7 @@ namespace UTDataValidator
                 ReadExcelData(item, sheet, true);
             }
 
+            _eventExcelValidator.ThrowIfErrors();
             ExpectedData = new ExcelTestDefinition()
             {
                 TestActions = testActions,
